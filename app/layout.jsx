@@ -1,6 +1,5 @@
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
-import { AuthProvider } from '@/lib/auth-context'
 import { ServiceWorkerRegister } from '@/components/sw-register'
 import { Toaster } from '@/components/ui/sonner'
 
@@ -61,7 +60,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR" className="bg-background">
       <body className="font-sans antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        {children}
         <ServiceWorkerRegister />
         <Toaster position="top-center" richColors />
         {process.env.NODE_ENV === 'production' && <Analytics />}

@@ -1,3 +1,4 @@
+import { AuthProvider } from "@/lib/auth-context"
 import { AuthLoginRoute } from "@/components/auth-login-route"
 
 export const metadata = {
@@ -6,5 +7,9 @@ export const metadata = {
 }
 
 export default function LoginPage() {
-  return <AuthLoginRoute />
+  return (
+    <AuthProvider>
+      <AuthLoginRoute />
+    </AuthProvider>
+  )
 }
