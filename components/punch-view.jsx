@@ -1,14 +1,15 @@
 ﻿"use client"
 
-import { useEffect, useState } from "react"
-import { ChevronLeft, ChevronRight, DoorOpen, LogIn, LogOut, Coffee, Utensils, Check } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { BarChart3, ChevronLeft, ChevronRight, DoorOpen, LogIn, LogOut, Coffee, Utensils, Check } from "lucide-react"
 import { useAuth, useStoreData } from "@/lib/auth-context"
-import { getJustification, getRecord, punch } from "@/lib/store"
+import { getJustification, getMonthRecords, getRecord, punch } from "@/lib/store"
 import {
   currentTime,
   expectedMinutes,
   friendlyDate,
   minutesToHHMM,
+  monthName,
   toISODate,
   todayISO,
   parseISODate,
@@ -52,6 +53,19 @@ export function PunchView() {
 
   const record = useStoreData(() => (user ? getRecord(user.id, date) : undefined))
   const justification = useStoreData(() => (user ? getJustification(user.id, date) : undefined))
+  const monthRecords = useStoreData(() =>
+    user ? getMonthRecords(user.id, parseISODate(date).getFullYear(), parseISODate(date).getMonth()) : [],
+  )
+
+  const schedule = user?.schedule ?? []
+  const worked = workedMinutes(record)
+  const expected = expectedMinutes(date, schedule)
+  const balance = worked - expected
+  const hasAnyPunch = !!(record?.entry || record?.breakTime || record?.returnTime || record?.exit)
+  const isClosed = !!(record?.entry && record?.exit)
+  const configuredKeys = Array.isArray(user?.punchFields?.[dayIndex]) ? user.punchFields[dayIndex] : FULL_DAY_KEYS
+  const activeFields = FIELDS.filter((f) => configuredKeys.includes(f.key))
+  const monthChart = useMemo(() => buildMonthChart(date, monthRecords, schedule), [date, monthRecords, schedule])
 
   if (!user) return null
 
@@ -78,14 +92,6 @@ export function PunchView() {
     }
     toast.success(`${PUNCH_LABELS[field]} registrada.`)
   }
-
-  const worked = workedMinutes(record)
-  const expected = expectedMinutes(date, user.schedule)
-  const balance = worked - expected
-  const hasAnyPunch = !!(record?.entry || record?.breakTime || record?.returnTime || record?.exit)
-  const isClosed = !!(record?.entry && record?.exit)
-  const configuredKeys = Array.isArray(user.punchFields?.[dayIndex]) ? user.punchFields[dayIndex] : FULL_DAY_KEYS
-  const activeFields = FIELDS.filter((f) => configuredKeys.includes(f.key))
 
   return (
     <div className="flex flex-col gap-4">
@@ -215,6 +221,135 @@ export function PunchView() {
           Escolha qual batida deseja registrar.
         </p>
       )}
+
+      <MonthOverview chart={monthChart} />
+    </div>
+  )
+}
+
+function buildMonthChart(date, records, schedule) {
+  const base = parseISODate(date)
+  const year = base.getFullYear()
+  const month = base.getMonth()
+  const today = todayISO()
+  const recordsByDate = new Map(records.map((record) => [record.date, record]))
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const days = Array.from({ length: daysInMonth }, (_, index) => {
+    const iso = toISODate(new Date(year, month, index + 1))
+    const record = recordsByDate.get(iso)
+    const worked = workedMinutes(record)
+    const expected = expectedMinutes(iso, schedule)
+    const closed = !!(record?.entry && record?.exit)
+    return {
+      iso,
+      day: String(index + 1).padStart(2, "0"),
+      worked,
+      expected,
+      closed,
+      future: iso > today,
+      balance: closed ? worked - expected : null,
+    }
+  })
+
+  const closedDays = days.filter((day) => day.closed)
+  const totalWorked = closedDays.reduce((total, day) => total + day.worked, 0)
+  const totalBalance = closedDays.reduce((total, day) => total + day.worked - day.expected, 0)
+  const maxMinutes = Math.max(60, ...days.map((day) => Math.max(day.worked, day.expected)))
+
+  return {
+    label: `${monthName(month)} de ${year}`,
+    days,
+    totalWorked,
+    totalBalance,
+    closedCount: closedDays.length,
+    maxMinutes,
+  }
+}
+
+function MonthOverview({ chart }) {
+  return (
+    <Card className="overflow-hidden p-4 animate-fade-slide">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <BarChart3 className="h-4 w-4 shrink-0 text-primary" />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-foreground">Resumo dos meus pontos</p>
+            <p className="truncate text-xs text-muted-foreground">{chart.label}</p>
+          </div>
+        </div>
+        <span className="rounded-md bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground">
+          {chart.closedCount} dia(s)
+        </span>
+      </div>
+
+      <div className="mb-4 grid grid-cols-2 gap-2">
+        <MiniMetric label="Trabalhado" value={minutesToHHMM(chart.totalWorked)} />
+        <MiniMetric
+          label="Banco"
+          value={minutesToHHMM(chart.totalBalance)}
+          tone={chart.totalBalance >= 0 ? "positive" : "negative"}
+        />
+      </div>
+
+      <div className="flex h-32 items-end gap-1 overflow-x-auto pb-1">
+        {chart.days.map((day) => {
+          const expectedHeight = `${Math.max(5, (day.expected / chart.maxMinutes) * 100)}%`
+          const workedHeight = `${Math.max(5, (day.worked / chart.maxMinutes) * 100)}%`
+          return (
+            <div key={day.iso} className="flex min-w-5 flex-1 flex-col items-center gap-1">
+              <div className="flex h-24 w-full items-end justify-center gap-0.5">
+                <span
+                  className={cn("w-1.5 rounded-t bg-primary/20", day.future && "opacity-30")}
+                  style={{ height: expectedHeight }}
+                  title={`Jornada ${minutesToHHMM(day.expected)}`}
+                />
+                <span
+                  className={cn(
+                    "w-1.5 rounded-t transition-all duration-500",
+                    !day.closed ? "bg-muted" : day.balance >= 0 ? "bg-positive" : "bg-negative",
+                    day.future && "opacity-30",
+                  )}
+                  style={{ height: workedHeight }}
+                  title={day.closed ? `Trabalhado ${minutesToHHMM(day.worked)}` : "Sem fechamento"}
+                />
+              </div>
+              <span className="text-[9px] text-muted-foreground">{day.day}</span>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="mt-3 flex items-center justify-center gap-4 text-[11px] text-muted-foreground">
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-primary/25" />
+          Jornada
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-positive" />
+          Fechado
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-muted" />
+          Aberto
+        </span>
+      </div>
+    </Card>
+  )
+}
+
+function MiniMetric({ label, value, tone = "default" }) {
+  return (
+    <div className="rounded-lg border border-border bg-muted/40 px-3 py-2">
+      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+      <p
+        className={cn(
+          "font-mono text-base font-bold tabular-nums",
+          tone === "positive" && "text-positive",
+          tone === "negative" && "text-negative",
+        )}
+      >
+        {value}
+      </p>
     </div>
   )
 }

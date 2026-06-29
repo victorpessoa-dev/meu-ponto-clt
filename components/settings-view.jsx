@@ -473,6 +473,11 @@ function SpreadsheetSection() {
     return import("xlsx")
   }
 
+  function inferYearFromSheetName(name) {
+    const match = String(name || "").match(/\b(19\d{2}|20\d{2})\b/)
+    return match ? Number(match[1]) : undefined
+  }
+
   async function downloadWorkbook(rows, filename) {
     const XLSX = await loadXlsx()
     const worksheet = XLSX.utils.json_to_sheet(rows)
@@ -516,9 +521,19 @@ function SpreadsheetSection() {
       const XLSX = await loadXlsx()
       const buffer = await file.arrayBuffer()
       const workbook = XLSX.read(buffer, { cellDates: true })
-      const sheet = workbook.Sheets[workbook.SheetNames[0]]
-      const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" })
-      const { records: importedRecords, errors } = rowsToRecords(rows)
+      const importedRecords = []
+      const errors = []
+
+      workbook.SheetNames.forEach((sheetName) => {
+        const sheet = workbook.Sheets[sheetName]
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" })
+        const result = rowsToRecords(rows, {
+          defaultYear: inferYearFromSheetName(sheetName),
+        })
+
+        importedRecords.push(...result.records)
+        errors.push(...result.errors.map((error) => `${sheetName}: ${error}`))
+      })
 
       if (errors.length > 0) {
         toast.error(errors.slice(0, 3).join(" "))
@@ -550,8 +565,8 @@ function SpreadsheetSection() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4 px-4 py-4 sm:px-5">
           <div className="rounded-lg border border-border bg-muted/40 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
-            A planilha deve ter as colunas Data, Entrada, Pausa, Retorno e Saída. Datas podem estar como
-            AAAA-MM-DD ou DD/MM/AAAA.
+            A importação lê todas as abas do XLSX, usando apenas Data, Entrada, Pausa, Retorno e Saída.
+            Colunas como Hrs Trabalho, Banco, Total e demais cálculos são ignoradas.
           </div>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
