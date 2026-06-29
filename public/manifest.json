@@ -1,0 +1,37 @@
+{
+  "name": "Meu Ponto CLT",
+  "short_name": "Meu Ponto",
+  "description": "Registre horários de ponto, acompanhe banco de horas, importe planilhas XLSX e personalize seu perfil profissional.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a2b4a",
+  "theme_color": "#1a2b4a",
+  "categories": ["productivity", "business", "utilities"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "64x64",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apple-icon.svg",
+      "sizes": "180x180",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
