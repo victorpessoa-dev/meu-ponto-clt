@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { BarChart3, ChevronLeft, ChevronRight, EyeOff, Table2 } from "lucide-react"
 import { useAuth, useStoreData } from "@/lib/auth-context"
 import { getMonthJustifications, getMonthRecords } from "@/lib/store"
@@ -18,11 +18,17 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 
-export function ReportView() {
+export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
   const { user } = useAuth()
   const now = new Date()
   const [cursor, setCursor] = useState({ year: now.getFullYear(), month: now.getMonth() })
   const [showSheet, setShowSheet] = useState(true)
+
+  useEffect(() => {
+    if (!cursorOverride) return
+    setCursor(cursorOverride)
+    onCursorOverrideApplied?.()
+  }, [cursorOverride, onCursorOverrideApplied])
 
   const records = useStoreData(() => (user ? getMonthRecords(user.id, cursor.year, cursor.month) : []))
   const justifications = useStoreData(() =>
@@ -71,7 +77,7 @@ export function ReportView() {
   let totalBalance = 0
   let workedDays = 0
   dayMetrics.forEach((day) => {
-    if (day.worked > 0) {
+    if (day.hasPunch) {
       totalWorked += day.worked
       totalBalance += day.worked - day.expected
       workedDays += 1

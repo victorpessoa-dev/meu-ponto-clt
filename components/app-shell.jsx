@@ -22,6 +22,7 @@ import { UserAvatar } from "@/components/avatar-picker"
 export function AppShell() {
   const { user, logout } = useAuth()
   const [tab, setTab] = useState("ponto")
+  const [reportCursor, setReportCursor] = useState(null)
 
   if (!user) return null
 
@@ -72,8 +73,20 @@ export function AppShell() {
 
       <main className="mx-auto w-full max-w-2xl flex-1 px-safe pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] pt-4">
         {tab === "ponto" && <PunchView />}
-        {tab === "relatorio" && <ReportView />}
-        {tab === "config" && <SettingsView />}
+        {tab === "relatorio" && (
+          <ReportView cursorOverride={reportCursor} onCursorOverrideApplied={() => setReportCursor(null)} />
+        )}
+        {tab === "config" && (
+          <SettingsView
+            onImportComplete={(summary) => {
+              if (summary?.latestDate) {
+                const [year, month] = summary.latestDate.split("-").map(Number)
+                setReportCursor({ year, month: month - 1 })
+              }
+              setTab("relatorio")
+            }}
+          />
+        )}
         {tab === "admin" && user.isAdmin && <AdminView />}
       </main>
 

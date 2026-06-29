@@ -29,7 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PasswordField } from "@/components/password-field"
 import { toast } from "sonner"
 
-export function SettingsView() {
+export function SettingsView({ onImportComplete }) {
   const { user } = useAuth()
   if (!user) return null
 
@@ -52,7 +52,7 @@ export function SettingsView() {
         <AdjustSection />
       </TabsContent>
       <TabsContent value="planilha">
-        <SpreadsheetSection />
+        <SpreadsheetSection onImportComplete={onImportComplete} />
       </TabsContent>
     </Tabs>
   )
@@ -460,9 +460,10 @@ function AdjustSection() {
   )
 }
 
-function SpreadsheetSection() {
+function SpreadsheetSection({ onImportComplete }) {
   const { user } = useAuth()
   const [importing, setImporting] = useState(false)
+  const [importYear, setImportYear] = useState(String(new Date().getFullYear()))
   const records = useStoreData(() =>
     getRecords()
       .filter((record) => record.userId === user.id)
@@ -471,11 +472,6 @@ function SpreadsheetSection() {
 
   async function loadXlsx() {
     return import("xlsx")
-  }
-
-  function inferYearFromSheetName(name) {
-    const match = String(name || "").match(/\b(19\d{2}|20\d{2})\b/)
-    return match ? Number(match[1]) : undefined
   }
 
   async function downloadWorkbook(rows, filename) {
@@ -518,6 +514,12 @@ function SpreadsheetSection() {
 
     setImporting(true)
     try {
+      const year = Number(importYear)
+      if (!Number.isInteger(year) || year < 1900 || year > 2100) {
+        toast.error("Informe um ano válido para a importação.")
+        return
+      }
+
       const XLSX = await loadXlsx()
       const buffer = await file.arrayBuffer()
       const workbook = XLSX.read(buffer, { cellDates: true })
@@ -526,9 +528,9 @@ function SpreadsheetSection() {
 
       workbook.SheetNames.forEach((sheetName) => {
         const sheet = workbook.Sheets[sheetName]
-        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" })
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false, dateNF: "dd/mm/yyyy" })
         const result = rowsToRecords(rows, {
-          defaultYear: inferYearFromSheetName(sheetName),
+          defaultYear: year,
         })
 
         importedRecords.push(...result.records)
@@ -547,6 +549,7 @@ function SpreadsheetSection() {
       }
 
       toast.success(`${res.count} registro(s) importado(s).`)
+      onImportComplete?.(res)
     } catch {
       toast.error("Não foi possível ler a planilha.")
     } finally {
@@ -567,6 +570,21 @@ function SpreadsheetSection() {
           <div className="rounded-lg border border-border bg-muted/40 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
             A importação lê todas as abas do XLSX, usando apenas Data, Entrada, Pausa, Retorno e Saída.
             Colunas como Hrs Trabalho, Banco, Total e demais cálculos são ignoradas.
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="import-year">Ano da importação</Label>
+            <Input
+              id="import-year"
+              type="number"
+              min="1900"
+              max="2100"
+              value={importYear}
+              onChange={(event) => setImportYear(event.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Usado quando a coluna Data vem sem ano, por exemplo 01/jan ou 01/06.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
