@@ -14,8 +14,9 @@ import {
   updateUser,
 } from "@/lib/store"
 import { friendlyDate, parseISODate, todayISO } from "@/lib/time-utils"
-import { JUSTIFICATION_LABELS } from "@/lib/types"
+import { JUSTIFICATION_LABELS, PUNCH_FIELD_OPTIONS } from "@/lib/types"
 import { calculateAge, isAdult } from "@/lib/profile-utils"
+import { normalizeEmail, validateEmail, validateStrongPassword } from "@/lib/security-utils"
 import { recordsToRows, rowsToRecords } from "@/lib/xlsx-utils"
 import { cn } from "@/lib/utils"
 import { AvatarPicker, UserAvatar } from "@/components/avatar-picker"
@@ -89,13 +90,25 @@ function ProfileSection() {
       toast.error("As senhas não coincidem.")
       return
     }
+    const emailError = validateEmail(email)
+    if (emailError) {
+      toast.error(emailError)
+      return
+    }
+    if (password) {
+      const passwordError = validateStrongPassword(password)
+      if (passwordError) {
+        toast.error(passwordError)
+        return
+      }
+    }
     if (!isAdult(birthDate)) {
       toast.error("Você precisa ter 18 anos ou mais para usar o sistema.")
       return
     }
     const res = await updateUser(user.id, {
       name: name.trim(),
-      email: email.trim(),
+      email: normalizeEmail(email),
       birthDate,
       companyName: companyName.trim(),
       jobTitle: jobTitle.trim(),
@@ -182,11 +195,11 @@ function ProfileSection() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
             <Label htmlFor="pwd">Nova senha</Label>
-            <PasswordField id="pwd" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <PasswordField id="pwd" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} />
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="pwd2">Confirmar</Label>
-            <PasswordField id="pwd2" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+            <PasswordField id="pwd2" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} minLength={8} />
           </div>
         </div>
 
@@ -204,6 +217,23 @@ function ProfileSection() {
             ))}
           </div>
           <p className="text-xs text-muted-foreground">A jornada é definida pelo administrador.</p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Label>Batidas configuradas</Label>
+          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+            {scheduleLabels.map((day, i) => {
+              const fields = PUNCH_FIELD_OPTIONS.filter((field) => user.punchFields?.[i]?.includes(field.key))
+              return (
+                <div key={day} className="rounded-md border border-border bg-muted/40 px-2 py-1.5 text-[11px]">
+                  <span className="font-medium text-foreground">{day}</span>
+                  <span className="ml-2 text-muted-foreground">
+                    {fields.length > 0 ? fields.map((field) => field.label).join(", ") : "Folga"}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -335,7 +365,7 @@ function AdjustSection() {
   const { user } = useAuth()
   const [date, setDate] = useState(todayISO())
 
-  const record = useStoreData(() => getRecord(user.id, date))
+  const record = useStoreData(() => (date ? getRecord(user.id, date) : undefined))
 
   const [values, setValues] = useState({ entry: "", breakTime: "", returnTime: "", exit: "" })
   const [loadedDate, setLoadedDate] = useState("")
@@ -352,8 +382,41 @@ function AdjustSection() {
     })
   }, [date, loadedDate, record])
 
+  const dayIndex = date ? parseISODate(date).getDay() : -1
+  const configuredKeys = Array.isArray(user.punchFields?.[dayIndex])
+    ? user.punchFields[dayIndex]
+    : PUNCH_FIELD_OPTIONS.map((field) => field.key)
+  const fields = PUNCH_FIELD_OPTIONS.filter((field) => configuredKeys.includes(field.key))
+
   async function save() {
-    const payload = isSaturday ? { ...values, breakTime: "", returnTime: "" } : values
+    if (!date) {
+      toast.error("Selecione a data do ajuste.")
+      return
+    }
+
+    const payload = fields.reduce((acc, field) => {
+      acc[field.key] = values[field.key]
+      return acc
+    }, {})
+
+    const entry = payload.entry
+    const breakTime = payload.breakTime
+    const returnTime = payload.returnTime
+    const exit = payload.exit
+
+    if (returnTime && !breakTime) {
+      toast.error("Informe a pausa antes do retorno.")
+      return
+    }
+    if (breakTime && returnTime && returnTime <= breakTime) {
+      toast.error("O retorno deve ser depois da pausa.")
+      return
+    }
+    if (entry && exit && exit <= entry) {
+      toast.error("A saída deve ser depois da entrada.")
+      return
+    }
+
     const res = await adjustRecord(user.id, date, payload)
     if (res?.error) {
       toast.error(res.error)
@@ -361,14 +424,6 @@ function AdjustSection() {
     }
     toast.success("Ponto ajustado.")
   }
-
-  const fields = [
-    { key: "entry", label: "Entrada" },
-    { key: "breakTime", label: "Pausa" },
-    { key: "returnTime", label: "Retorno" },
-    { key: "exit", label: "Saída" },
-  ]
-  const isSaturday = parseISODate(date).getDay() === 6
 
   return (
     <Card>
@@ -388,16 +443,15 @@ function AdjustSection() {
                 id={`adj-${key}`}
                 type="time"
                 value={values[key]}
-                disabled={isSaturday && ["breakTime", "returnTime"].includes(key)}
                 onChange={(e) => setValues((v) => ({ ...v, [key]: e.target.value }))}
               />
             </div>
           ))}
         </div>
         <p className="text-xs text-muted-foreground">
-          {isSaturday ? "Pausa e retorno ficam desativados aos sábados." : "Deixe um campo vazio para apagá-lo."}
+          {fields.length === 0 ? "Nenhuma batida configurada para este dia." : "Deixe um campo vazio para apaga-lo."}
         </p>
-        <Button onClick={save}>
+        <Button onClick={save} disabled={fields.length === 0}>
           <Save className="mr-2 h-4 w-4" />
           Salvar ajuste
         </Button>

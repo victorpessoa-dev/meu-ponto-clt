@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import {
   BriefcaseBusiness,
   Calculator,
@@ -58,8 +59,7 @@ export function UserAvatar({ avatarIcon, name, className, iconClassName }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-full ring-1 transition-transform duration-300",
-        option.tone,
+        "inline-flex shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground ring-1 ring-border transition-transform duration-300",
         className,
       )}
       aria-hidden="true"
@@ -71,31 +71,48 @@ export function UserAvatar({ avatarIcon, name, className, iconClassName }) {
 }
 
 export function AvatarPicker({ value, onChange, label = "Escolha um avatar" }) {
-  return (
-    <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label={label}>
-      {AVATAR_OPTIONS.map((option) => {
-        const Icon = option.icon
-        const active = value === option.key
+  const [open, setOpen] = useState(false)
 
-        return (
-          <button
-            key={option.key}
-            type="button"
-            onClick={() => onChange(option.key)}
-            className={cn(
-              "group flex aspect-square items-center justify-center rounded-lg ring-1 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm",
-              option.tone,
-              active ? "scale-[1.03] ring-2 ring-primary" : "opacity-80 hover:opacity-100",
-            )}
-            aria-label={option.label}
-            aria-checked={active}
-            role="radio"
-            title={option.label}
-          >
-            <Icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />
-          </button>
-        )
-      })}
+  return (
+    <div className="flex flex-col gap-2">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="touch-target inline-flex items-center justify-center rounded-lg border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+        aria-expanded={open}
+      >
+        {open ? "Ocultar avatares" : label}
+      </button>
+
+      {open && (
+        <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label={label}>
+          {AVATAR_OPTIONS.map((option) => {
+            const Icon = option.icon
+            const active = value === option.key
+
+            return (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => {
+                  onChange(option.key)
+                  setOpen(false)
+                }}
+                className={cn(
+                  "group flex aspect-square items-center justify-center rounded-lg bg-card text-muted-foreground ring-1 ring-border transition-all duration-200 hover:-translate-y-0.5 hover:bg-muted hover:text-foreground hover:shadow-sm",
+                  active && "scale-[1.03] bg-primary text-primary-foreground ring-2 ring-primary",
+                )}
+                aria-label={option.label}
+                aria-checked={active}
+                role="radio"
+                title={option.label}
+              >
+                <Icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

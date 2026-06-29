@@ -15,6 +15,7 @@ CREATE TABLE public.users (
   is_admin boolean NOT NULL DEFAULT false,
   is_active boolean NOT NULL DEFAULT true,
   schedule integer[] NOT NULL DEFAULT ARRAY[0, 480, 480, 480, 480, 480, 240],
+  punch_fields jsonb NOT NULL DEFAULT '[[], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "exit"]]'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT users_avatar_icon_check CHECK (
     avatar_icon IN (
@@ -40,7 +41,8 @@ CREATE TABLE public.users (
       'sparkles'
     )
   ),
-  CONSTRAINT users_schedule_length_check CHECK (array_length(schedule, 1) = 7)
+  CONSTRAINT users_schedule_length_check CHECK (array_length(schedule, 1) = 7),
+  CONSTRAINT users_punch_fields_array_check CHECK (jsonb_typeof(punch_fields) = 'array' AND jsonb_array_length(punch_fields) = 7)
 );
 
 CREATE INDEX idx_users_email ON public.users(email);
@@ -104,6 +106,7 @@ CREATE TABLE public.errors (
 CREATE INDEX idx_errors_user_id ON public.errors(user_id);
 CREATE INDEX idx_errors_created_at ON public.errors(created_at);
 
+-- Verifica se o usuario autenticado existe no perfil e esta ativo.
 CREATE OR REPLACE FUNCTION public.is_active_user()
 RETURNS boolean
 LANGUAGE plpgsql
@@ -122,6 +125,7 @@ BEGIN
 END;
 $$;
 
+-- Verifica se o usuario autenticado tem permissao de administrador.
 CREATE OR REPLACE FUNCTION public.is_admin_user()
 RETURNS boolean
 LANGUAGE plpgsql
@@ -140,6 +144,7 @@ BEGIN
 END;
 $$;
 
+-- Protege campos sensiveis do perfil para evitar alteracoes indevidas por usuario comum.
 CREATE OR REPLACE FUNCTION public.protect_user_profile_fields()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -150,6 +155,7 @@ BEGIN
   IF public.is_admin_user() THEN
     NEW.avatar_icon := COALESCE(NULLIF(NEW.avatar_icon, ''), 'user');
     NEW.schedule := COALESCE(NEW.schedule, ARRAY[0, 480, 480, 480, 480, 480, 240]);
+    NEW.punch_fields := COALESCE(NEW.punch_fields, '[[], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "exit"]]'::jsonb);
     RETURN NEW;
   END IF;
 
@@ -158,17 +164,20 @@ BEGIN
     NEW.is_active := true;
     NEW.avatar_icon := COALESCE(NULLIF(NEW.avatar_icon, ''), 'user');
     NEW.schedule := COALESCE(NEW.schedule, ARRAY[0, 480, 480, 480, 480, 480, 240]);
+    NEW.punch_fields := COALESCE(NEW.punch_fields, '[[], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "exit"]]'::jsonb);
     RETURN NEW;
   END IF;
 
   NEW.is_admin := OLD.is_admin;
   NEW.is_active := OLD.is_active;
   NEW.schedule := OLD.schedule;
+  NEW.punch_fields := OLD.punch_fields;
   NEW.avatar_icon := COALESCE(NULLIF(NEW.avatar_icon, ''), OLD.avatar_icon, 'user');
   RETURN NEW;
 END;
 $$;
 
+-- Cria ou completa o perfil publico quando um usuario novo nasce no Supabase Auth.
 CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -186,7 +195,8 @@ BEGIN
     avatar_icon,
     is_admin,
     is_active,
-    schedule
+    schedule,
+    punch_fields
   )
   VALUES (
     NEW.id,
@@ -198,7 +208,8 @@ BEGIN
     COALESCE(NULLIF(NEW.raw_user_meta_data->>'avatar_icon', ''), 'user'),
     false,
     true,
-    ARRAY[0, 480, 480, 480, 480, 480, 240]
+    ARRAY[0, 480, 480, 480, 480, 480, 240],
+    '[[], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "exit"]]'::jsonb
   )
   ON CONFLICT (id) DO UPDATE SET
     email = EXCLUDED.email,
@@ -212,6 +223,7 @@ BEGIN
 END;
 $$;
 
+-- Atualiza automaticamente o campo updated_at quando um registro de ponto muda.
 CREATE OR REPLACE FUNCTION public.touch_updated_at()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -224,16 +236,19 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS protect_user_profile_fields_trigger ON public.users;
+-- Aplica a protecao de campos antes de criar ou atualizar perfis.
 CREATE TRIGGER protect_user_profile_fields_trigger
   BEFORE INSERT OR UPDATE ON public.users
   FOR EACH ROW EXECUTE FUNCTION public.protect_user_profile_fields();
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+-- Sincroniza usuarios do Auth com a tabela public.users apos o cadastro.
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
 
 DROP TRIGGER IF EXISTS touch_time_records_updated_at ON public.time_records;
+-- Mantem updated_at atualizado sempre que um ponto for alterado.
 CREATE TRIGGER touch_time_records_updated_at
   BEFORE UPDATE ON public.time_records
   FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();

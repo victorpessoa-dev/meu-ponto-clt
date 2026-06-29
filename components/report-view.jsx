@@ -162,8 +162,8 @@ export function ReportView() {
 
       {showSheet && (
       <div className="animate-fade-slide overflow-x-auto">
-        <Card className="min-w-[20rem] overflow-hidden p-0 sm:min-w-0">
-          <div className="grid grid-cols-[2.25rem_repeat(5,minmax(2.5rem,1fr))] border-b border-border bg-primary text-[9px] font-semibold uppercase tracking-wide text-primary-foreground sm:text-[11px]">
+        <Card className="min-w-[24rem] overflow-hidden p-0 sm:min-w-0">
+          <div className="grid grid-cols-[3rem_repeat(5,minmax(3.5rem,1fr))] border-b border-border bg-primary text-[9px] font-semibold uppercase tracking-wide text-primary-foreground sm:text-[11px]">
             <Cell className="sticky left-0 z-10 bg-primary justify-center">Dia</Cell>
             <Cell className="justify-center">Ent</Cell>
             <Cell className="justify-center">Pausa</Cell>
@@ -178,17 +178,17 @@ export function ReportView() {
                 <div
                   key={iso}
                   className={cn(
-                    "grid grid-cols-[2.25rem_repeat(5,minmax(2.5rem,1fr))] items-center text-sm",
+                    "grid grid-cols-[3rem_repeat(5,minmax(3.5rem,1fr))] items-center text-sm",
                     weekend && "bg-muted/40",
                   )}
                 >
-                  <div className="sticky left-0 z-10 flex flex-col items-center bg-inherit py-2 leading-tight">
+                  <div className="sticky left-0 z-10 flex flex-col items-center bg-inherit px-2 py-2 leading-tight">
                     <span className="text-xs font-bold text-foreground">{iso.split("-")[2]}</span>
                     <span className="text-[9px] capitalize text-muted-foreground sm:text-[10px]">{weekdayShort(iso)}</span>
                   </div>
 
                   {!hasPunch && just ? (
-                    <div className="col-span-5 px-1.5 py-2 sm:px-2">
+                    <div className="col-span-5 px-2 py-2 sm:px-3">
                       <span className="inline-block max-w-full truncate rounded bg-accent px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground sm:px-2 sm:text-xs">
                         {JUSTIFICATION_LABELS[just.type]}
                       </span>
@@ -199,7 +199,7 @@ export function ReportView() {
                       <TimeCell value={rec?.breakTime} />
                       <TimeCell value={rec?.returnTime} />
                       <TimeCell value={rec?.exit} tone="exit" />
-                      <div className="flex items-center justify-center py-2 font-mono text-[10px] font-bold tabular-nums sm:text-xs">
+                      <div className="flex items-center justify-center px-2 py-2 font-mono text-[10px] font-bold tabular-nums sm:text-xs">
                         {balance == null ? (
                           <span className="text-muted-foreground/40">-</span>
                         ) : (
@@ -226,12 +226,12 @@ export function ReportView() {
 }
 
 function Cell({ children, className }) {
-  return <div className={cn("flex items-center px-1 py-2", className)}>{children}</div>
+  return <div className={cn("flex items-center px-2 py-2", className)}>{children}</div>
 }
 
 function TimeCell({ value, tone, className }) {
   return (
-    <div className={cn("flex items-center justify-center py-2 font-mono text-xs tabular-nums", className)}>
+    <div className={cn("flex items-center justify-center px-2 py-2 font-mono text-xs tabular-nums", className)}>
       {value ? (
         <span
           className={cn(

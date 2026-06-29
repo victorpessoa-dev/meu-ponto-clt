@@ -4,7 +4,9 @@ import { useEffect, useState } from "react"
 import { Pencil, Plus, ShieldOff } from "lucide-react"
 import { useAuth, useStoreData } from "@/lib/auth-context"
 import { createUser, deactivateUser, getUsers, updateUser } from "@/lib/store"
-import { DEFAULT_SCHEDULE } from "@/lib/types"
+import { normalizeEmail, validateEmail, validateStrongPassword } from "@/lib/security-utils"
+import { DEFAULT_PUNCH_FIELDS, DEFAULT_SCHEDULE, PUNCH_FIELD_OPTIONS } from "@/lib/types"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -147,6 +149,7 @@ function UserDialog({ state, onClose, currentId }) {
   const [isAdmin, setIsAdmin] = useState(false)
   const [isActive, setIsActive] = useState(true)
   const [scheduleHours, setScheduleHours] = useState([])
+  const [punchFields, setPunchFields] = useState(DEFAULT_PUNCH_FIELDS)
   const [loadedId, setLoadedId] = useState(null)
 
   const key = state.open ? (editing?.id ?? "new") : "closed"
@@ -166,6 +169,7 @@ function UserDialog({ state, onClose, currentId }) {
 
     const sched = editing?.schedule ?? DEFAULT_SCHEDULE
     setScheduleHours(sched.map((m) => (m === 0 ? "0" : String(+(m / 60).toFixed(2)))))
+    setPunchFields(editing?.punchFields ?? DEFAULT_PUNCH_FIELDS)
   }, [editing, key, loadedId, state.open])
 
   async function save() {
@@ -173,16 +177,29 @@ function UserDialog({ state, onClose, currentId }) {
       toast.error("Preencha nome e e-mail.")
       return
     }
+    const emailError = validateEmail(email)
+    if (emailError) {
+      toast.error(emailError)
+      return
+    }
+    if (password) {
+      const passwordError = validateStrongPassword(password)
+      if (passwordError) {
+        toast.error(passwordError)
+        return
+      }
+    }
     const schedule = scheduleHours.map((h) => Math.max(0, Math.round((Number.parseFloat(h) || 0) * 60)))
 
     if (editing) {
       const res = await updateUser(editing.id, {
         name: name.trim(),
-        email: email.trim(),
+        email: normalizeEmail(email),
         avatarIcon,
         isAdmin,
         isActive,
         schedule,
+        punchFields,
         ...(password ? { password } : {}),
       })
       if (res?.error) {
@@ -196,7 +213,15 @@ function UserDialog({ state, onClose, currentId }) {
         toast.error("Defina uma senha para o novo usuário.")
         return
       }
-      const res = await createUser({ name: name.trim(), email: email.trim(), password, avatarIcon, isAdmin, schedule })
+      const res = await createUser({
+        name: name.trim(),
+        email: normalizeEmail(email),
+        password,
+        avatarIcon,
+        isAdmin,
+        schedule,
+        punchFields,
+      })
       if ("error" in res) {
         toast.error(res.error)
         return
@@ -204,6 +229,18 @@ function UserDialog({ state, onClose, currentId }) {
       toast.success("Usuário criado.")
       onClose()
     }
+  }
+
+  function togglePunchField(dayIndex, fieldKey) {
+    setPunchFields((current) =>
+      current.map((fields, index) => {
+        if (index !== dayIndex) return fields
+        const next = fields.includes(fieldKey)
+          ? fields.filter((key) => key !== fieldKey)
+          : [...fields, fieldKey]
+        return PUNCH_FIELD_OPTIONS.map((option) => option.key).filter((key) => next.includes(key))
+      }),
+    )
   }
 
   return (
@@ -242,7 +279,7 @@ function UserDialog({ state, onClose, currentId }) {
           {(!editing || isEditingSelf) && (
             <div className="flex flex-col gap-2">
               <Label htmlFor="u-pwd">{editing ? "Nova senha (deixe vazio p/ manter)" : "Senha"}</Label>
-              <PasswordField id="u-pwd" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+              <PasswordField id="u-pwd" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} />
             </div>
           )}
 
@@ -272,6 +309,40 @@ function UserDialog({ state, onClose, currentId }) {
               ))}
             </div>
             <p className="text-[11px] text-muted-foreground">Ex.: 8 = 8h, 4 = 4h, 0 = folga.</p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label>Batidas por dia</Label>
+            <div className="flex flex-col gap-2">
+              {DAY_LABELS.map((day, dayIndex) => (
+                <div key={day} className="rounded-lg border border-border bg-muted/30 p-2">
+                  <div className="mb-2 text-xs font-semibold text-foreground">{day}</div>
+                  <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                    {PUNCH_FIELD_OPTIONS.map((field) => {
+                      const active = punchFields[dayIndex]?.includes(field.key)
+                      return (
+                        <button
+                          key={field.key}
+                          type="button"
+                          onClick={() => togglePunchField(dayIndex, field.key)}
+                          className={cn(
+                            "h-8 rounded-md border px-2 text-xs font-medium transition-colors",
+                            active
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
+                          )}
+                        >
+                          {field.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Escolha quais botoes de ponto aparecem em cada dia da semana.
+            </p>
           </div>
 
           <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5">

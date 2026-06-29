@@ -34,13 +34,15 @@ const PUNCH_LABELS = {
   exit: "Saída",
 }
 
+const FULL_DAY_KEYS = FIELDS.map((field) => field.key)
+
 export function PunchView() {
   const { user } = useAuth()
   const [date, setDate] = useState(todayISO())
   const [now, setNow] = useState(currentTime())
   const today = todayISO()
   const isToday = date === today
-  const isSaturday = parseISODate(date).getDay() === 6
+  const dayIndex = parseISODate(date).getDay()
 
   useEffect(() => {
     if (!isToday) return
@@ -66,15 +68,9 @@ export function PunchView() {
       toast.info("Só é possível bater ponto no dia de hoje. Para corrigir outro dia, use Ajustes.")
       return
     }
-    if (isSaturday && ["breakTime", "returnTime"].includes(field)) {
-      toast.info("Pausa e retorno ficam desativados aos sábados.")
-      return
-    }
     if (record?.[field]) return
-    if (field !== nextField) {
-      toast.info(`Registre primeiro: ${PUNCH_LABELS[nextField]}.`)
-      return
-    }
+    if (isClosed && ["breakTime", "returnTime"].includes(field)) return
+    if (!activeFields.some((item) => item.key === field)) return
     const res = await punch(user.id, field)
     if (res?.error) {
       toast.error(res.error)
@@ -87,8 +83,9 @@ export function PunchView() {
   const expected = expectedMinutes(date, user.schedule)
   const balance = worked - expected
   const hasAnyPunch = !!(record?.entry || record?.breakTime || record?.returnTime || record?.exit)
-  const activeFields = isSaturday ? FIELDS.filter((f) => !["breakTime", "returnTime"].includes(f.key)) : FIELDS
-  const nextField = activeFields.find((f) => !record?.[f.key])?.key
+  const isClosed = !!(record?.entry && record?.exit)
+  const configuredKeys = Array.isArray(user.punchFields?.[dayIndex]) ? user.punchFields[dayIndex] : FULL_DAY_KEYS
+  const activeFields = FIELDS.filter((f) => configuredKeys.includes(f.key))
 
   return (
     <div className="flex flex-col gap-4">
@@ -122,12 +119,12 @@ export function PunchView() {
 
       <Card className="overflow-hidden p-0">
         <div className="grid grid-cols-3 divide-x divide-border">
-          <DaySummary label="Trabalhado" value={hasAnyPunch ? minutesToHHMM(worked) : "--:--"} />
+          <DaySummary label="Trabalhado" value={isClosed ? minutesToHHMM(worked) : "--:--"} />
           <DaySummary label="Jornada" value={expected > 0 ? minutesToHHMM(expected) : "Folga"} />
           <DaySummary
             label="Saldo"
-            value={hasAnyPunch ? minutesToHHMM(balance) : "--:--"}
-            tone={!hasAnyPunch ? "muted" : balance >= 0 ? "positive" : "negative"}
+            value={isClosed ? minutesToHHMM(balance) : "--:--"}
+            tone={!isClosed ? "muted" : balance >= 0 ? "positive" : "negative"}
           />
         </div>
       </Card>
@@ -140,24 +137,24 @@ export function PunchView() {
       )}
 
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-        {FIELDS.map(({ key, label, icon: Icon, tone }) => {
+        {activeFields.map(({ key, label, icon: Icon, tone }) => {
           const value = record?.[key] ?? null
-          const isNext = isToday && key === nextField
-          const isSaturdayBreak = isSaturday && ["breakTime", "returnTime"].includes(key)
+          const disabledByClosedDay = isClosed && ["breakTime", "returnTime"].includes(key) && !value
+          const canPunch = isToday && !value && !disabledByClosedDay
           return (
             <button
               key={key}
               onClick={() => handlePunch(key)}
-              disabled={isSaturdayBreak || (!isToday && !value)}
+              disabled={disabledByClosedDay || (!isToday && !value)}
               className={cn(
                 "relative flex min-h-[7rem] flex-col items-start gap-2 rounded-xl border p-3.5 text-left transition-all active:scale-[0.98] sm:min-h-[7.5rem] sm:gap-3 sm:p-4",
                 value
                   ? "border-border bg-card"
-                  : isNext
+                  : canPunch
                     ? "border-primary bg-primary text-primary-foreground shadow-md"
                     : "border-dashed border-border bg-muted/40",
-                ((!value && !isToday) || isSaturdayBreak) && "opacity-60",
-                !value && isToday && key !== nextField && !isSaturdayBreak && "cursor-not-allowed opacity-70",
+                !value && !isToday && "opacity-60",
+                disabledByClosedDay && "cursor-not-allowed opacity-55",
               )}
             >
               <div className="flex w-full items-center justify-between">
@@ -167,21 +164,21 @@ export function PunchView() {
                     value && tone === "entry" && "bg-positive/15 text-positive",
                     value && tone === "exit" && "bg-negative/15 text-negative",
                     value && tone === "neutral" && "bg-secondary text-secondary-foreground",
-                    !value && isNext && "bg-primary-foreground/15 text-primary-foreground",
-                    !value && !isNext && "bg-muted text-muted-foreground",
+                    !value && canPunch && "bg-primary-foreground/15 text-primary-foreground",
+                    !value && !canPunch && "bg-muted text-muted-foreground",
                   )}
                 >
                   {value ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
                 </span>
                 {value && <span className="text-xs font-medium text-muted-foreground">registrado</span>}
-                {!value && isNext && <span className="text-xs font-medium opacity-90">tocar p/ registrar</span>}
-                {!value && isSaturdayBreak && <span className="text-xs font-medium text-muted-foreground">sábado</span>}
+                {!value && canPunch && <span className="text-xs font-medium opacity-90">tocar p/ registrar</span>}
+                {!value && disabledByClosedDay && <span className="text-xs font-medium text-muted-foreground">desativado</span>}
               </div>
               <div>
                 <span
                   className={cn(
                     "text-xs font-medium uppercase tracking-wide",
-                    isNext && !value ? "text-primary-foreground/80" : "text-muted-foreground",
+                    canPunch && !value ? "text-primary-foreground/80" : "text-muted-foreground",
                   )}
                 >
                   {label}
@@ -189,7 +186,7 @@ export function PunchView() {
                 <p
                   className={cn(
                     "font-mono text-xl font-bold tabular-nums sm:text-2xl",
-                    !value && !isNext && "text-muted-foreground/50",
+                    !value && !canPunch && "text-muted-foreground/50",
                   )}
                 >
                   {value ?? "--:--"}
@@ -200,10 +197,22 @@ export function PunchView() {
         })}
       </div>
 
-      {!hasAnyPunch && isToday && (
+      {activeFields.length === 0 && (
+        <p className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-center text-sm text-muted-foreground">
+          Nenhuma batida configurada para este dia.
+        </p>
+      )}
+
+      {!isClosed && hasAnyPunch && (
+        <p className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-center text-sm text-muted-foreground">
+          Horário em aberto: registre entrada e saída para fechar o dia.
+        </p>
+      )}
+
+      {!hasAnyPunch && isToday && activeFields.length > 0 && (
         <p className="flex items-center justify-center gap-2 pt-1 text-center text-sm text-muted-foreground">
           <DoorOpen className="h-4 w-4" />
-          Toque em Entrada para começar seu dia.
+          Escolha qual batida deseja registrar.
         </p>
       )}
     </div>

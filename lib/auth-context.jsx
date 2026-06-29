@@ -10,8 +10,10 @@ import {
   login as storeLogin,
   logout as storeLogout,
   register as storeRegister,
+  resendSignupCode as storeResendSignupCode,
   refreshStore,
   subscribe,
+  verifySignupCode as storeVerifySignupCode,
 } from "./store"
 
 const AuthContext = createContext(null)
@@ -67,7 +69,19 @@ export function AuthProvider({ children }) {
     return storeRegister(data)
   }, [])
 
-  return <AuthContext.Provider value={{ user, ready, login, logout, register }}>{children}</AuthContext.Provider>
+  const verifySignupCode = useCallback(async (email, code) => {
+    return storeVerifySignupCode(email, code)
+  }, [])
+
+  const resendSignupCode = useCallback(async (email) => {
+    return storeResendSignupCode(email)
+  }, [])
+
+  return (
+    <AuthContext.Provider value={{ user, ready, login, logout, register, verifySignupCode, resendSignupCode }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {

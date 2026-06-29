@@ -1,10 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { Building2, BriefcaseBusiness, CalendarDays, Clock, UserRound } from "lucide-react"
+import { Building2, BriefcaseBusiness, CalendarDays, Clock, MailCheck, UserRound } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { calculateAge, isAdult } from "@/lib/profile-utils"
+import { getPasswordChecks, normalizeEmail, validateEmail, validateStrongPassword } from "@/lib/security-utils"
 import { AvatarPicker, UserAvatar } from "@/components/avatar-picker"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,8 +13,8 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { PasswordField } from "@/components/password-field"
 
-export function RegisterScreen({ onSuccess }) {
-  const { register } = useAuth()
+export function RegisterScreen() {
+  const { register, verifySignupCode, resendSignupCode } = useAuth()
   const [name, setName] = useState("")
   const [birthDate, setBirthDate] = useState("")
   const [companyName, setCompanyName] = useState("")
@@ -25,22 +26,41 @@ export function RegisterScreen({ onSuccess }) {
   const [error, setError] = useState(null)
   const [message, setMessage] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [pendingEmail, setPendingEmail] = useState("")
+  const [verificationCode, setVerificationCode] = useState("")
+  const [verifying, setVerifying] = useState(false)
+  const [resending, setResending] = useState(false)
   const age = calculateAge(birthDate)
+  const passwordChecks = getPasswordChecks(password)
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
     setMessage(null)
 
+    const emailError = validateEmail(email)
+    if (emailError) {
+      setError(emailError)
+      return
+    }
+
+    const passwordError = validateStrongPassword(password)
+    if (passwordError) {
+      setError(passwordError)
+      return
+    }
+
     if (password !== confirm) {
-      setError("As senhas não coincidem.")
+      setError("As senhas nao coincidem.")
       return
     }
 
     if (!isAdult(birthDate)) {
-      setError("Você precisa ter 18 anos ou mais para usar o sistema.")
+      setError("Voce precisa ter 18 anos ou mais para usar o sistema.")
       return
     }
+
+    const cleanEmail = normalizeEmail(email)
 
     setLoading(true)
     const res = await register({
@@ -49,7 +69,7 @@ export function RegisterScreen({ onSuccess }) {
       companyName: companyName.trim(),
       jobTitle: jobTitle.trim(),
       avatarIcon,
-      email: email.trim(),
+      email: cleanEmail,
       password,
     })
     setLoading(false)
@@ -59,12 +79,52 @@ export function RegisterScreen({ onSuccess }) {
       return
     }
 
-    if (res?.needsConfirmation) {
-      setMessage("Cadastro criado. Verifique seu e-mail para confirmar o acesso.")
+    setPassword("")
+    setConfirm("")
+    setPendingEmail(cleanEmail)
+    setVerificationCode("")
+    setMessage(
+      res?.needsConfirmation
+        ? "Cadastro criado. Digite abaixo o codigo enviado para seu e-mail."
+        : "Cadastro criado. Se o codigo nao chegar, verifique se a confirmacao por e-mail esta ativa no Supabase.",
+    )
+  }
+
+  async function handleVerifyCode() {
+    setError(null)
+    setMessage(null)
+    setVerifying(true)
+    const res = await verifySignupCode(pendingEmail, verificationCode)
+    setVerifying(false)
+
+    if (res?.error) {
+      setError(res.error)
       return
     }
 
-    onSuccess?.()
+    setMessage("E-mail confirmado com sucesso. Agora voce ja pode entrar com sua senha.")
+    setName("")
+    setBirthDate("")
+    setCompanyName("")
+    setJobTitle("")
+    setAvatarIcon("user")
+    setEmail("")
+    setPendingEmail("")
+    setVerificationCode("")
+  }
+
+  async function handleResendCode() {
+    setError(null)
+    setResending(true)
+    const res = await resendSignupCode(pendingEmail)
+    setResending(false)
+
+    if (res?.error) {
+      setError(res.error)
+      return
+    }
+
+    setMessage("Enviamos um novo codigo para seu e-mail.")
   }
 
   return (
@@ -142,7 +202,7 @@ export function RegisterScreen({ onSuccess }) {
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="job-title">Função na empresa</Label>
+                  <Label htmlFor="job-title">Funcao na empresa</Label>
                   <div className="relative">
                     <BriefcaseBusiness className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
@@ -174,6 +234,7 @@ export function RegisterScreen({ onSuccess }) {
                   required
                 />
               </div>
+
               <div className="flex flex-col gap-2">
                 <Label htmlFor="password">Senha</Label>
                 <PasswordField
@@ -182,9 +243,19 @@ export function RegisterScreen({ onSuccess }) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={6}
+                  minLength={8}
                 />
+                {password && (
+                  <div className="grid grid-cols-1 gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+                    {passwordChecks.map((check) => (
+                      <span key={check.key} className={check.valid ? "text-positive" : "text-muted-foreground"}>
+                        {check.valid ? "OK" : "--"} {check.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
+
               <div className="flex flex-col gap-2">
                 <Label htmlFor="confirm">Confirmar senha</Label>
                 <PasswordField
@@ -193,7 +264,7 @@ export function RegisterScreen({ onSuccess }) {
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   required
-                  minLength={6}
+                  minLength={8}
                 />
               </div>
 
@@ -208,24 +279,62 @@ export function RegisterScreen({ onSuccess }) {
                 </p>
               )}
 
-              <Button type="submit" className="mt-1 h-11 w-full text-base" disabled={loading}>
+              {pendingEmail && (
+                <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/40 p-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <MailCheck className="h-4 w-4 text-primary" />
+                    Confirmar e-mail
+                  </div>
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    Digite o codigo de 6 digitos enviado para {pendingEmail}.
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="verification-code">Codigo de confirmacao</Label>
+                    <Input
+                      id="verification-code"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      pattern="[0-9]{6}"
+                      placeholder="000000"
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <Button
+                      type="button"
+                      className="h-10"
+                      onClick={handleVerifyCode}
+                      disabled={verifying || verificationCode.length !== 6}
+                    >
+                      {verifying ? "Confirmando..." : "Confirmar codigo"}
+                    </Button>
+                    <Button type="button" variant="outline" className="h-10" onClick={handleResendCode} disabled={resending}>
+                      {resending ? "Reenviando..." : "Reenviar codigo"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <Button type="submit" className="mt-1 h-11 w-full text-base" disabled={loading || !!pendingEmail}>
                 {loading ? "Criando..." : "Criar cadastro"}
               </Button>
 
               <p className="text-center text-xs leading-5 text-muted-foreground">
-                Ao criar cadastro, você concorda com os{" "}
+                Ao criar cadastro, voce concorda com os{" "}
                 <Link href="/termos-de-uso" className="font-medium text-primary underline-offset-2 hover:underline">
                   Termos de Uso
                 </Link>{" "}
                 e com a{" "}
                 <Link href="/privacidade" className="font-medium text-primary underline-offset-2 hover:underline">
-                  Política de Privacidade
+                  Politica de Privacidade
                 </Link>
                 .
               </p>
 
               <p className="text-center text-sm text-muted-foreground">
-                Já tem conta?{" "}
+                Ja tem conta?{" "}
                 <Link href="/login" className="font-medium text-primary underline-offset-2 hover:underline">
                   Entrar
                 </Link>
