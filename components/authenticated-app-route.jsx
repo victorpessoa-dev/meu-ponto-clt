@@ -1,18 +1,12 @@
 "use client"
 
-import { useEffect } from "react"
 import { Clock } from "lucide-react"
-import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { AppShell } from "@/components/app-shell"
+import { RouteBlockScreen } from "@/components/route-block-screen"
 
 export function AuthenticatedAppRoute() {
   const { user, ready } = useAuth()
-  const router = useRouter()
-
-  useEffect(() => {
-    if (ready && !user) router.replace("/login")
-  }, [ready, router, user])
 
   if (!ready) {
     return (
@@ -23,5 +17,5 @@ export function AuthenticatedAppRoute() {
     )
   }
 
-  return user ? <AppShell /> : null
+  return user ? <AppShell /> : <RouteBlockScreen type="restricted" />
 }
