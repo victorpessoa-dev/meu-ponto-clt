@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS users (
   is_admin boolean NOT NULL DEFAULT false,
   is_active boolean NOT NULL DEFAULT true,
   schedule integer[] NOT NULL DEFAULT ARRAY[0, 480, 480, 480, 480, 480, 240],
+  punch_fields jsonb NOT NULL DEFAULT '[[], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "exit"]]'::jsonb,
+  clock_offset_minutes integer NOT NULL DEFAULT 0,
+  clock_offset_seconds integer NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -22,11 +25,27 @@ ALTER TABLE users
   ADD COLUMN IF NOT EXISTS company_name text,
   ADD COLUMN IF NOT EXISTS job_title text,
   ADD COLUMN IF NOT EXISTS avatar_icon text NOT NULL DEFAULT 'user',
-  ADD COLUMN IF NOT EXISTS schedule integer[] NOT NULL DEFAULT ARRAY[0, 480, 480, 480, 480, 480, 240];
+  ADD COLUMN IF NOT EXISTS schedule integer[] NOT NULL DEFAULT ARRAY[0, 480, 480, 480, 480, 480, 240],
+  ADD COLUMN IF NOT EXISTS punch_fields jsonb NOT NULL DEFAULT '[[], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "exit"]]'::jsonb,
+  ADD COLUMN IF NOT EXISTS clock_offset_minutes integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS clock_offset_seconds integer NOT NULL DEFAULT 0;
 
 UPDATE users
 SET name = COALESCE(name, split_part(email, '@', 1))
 WHERE name IS NULL;
+
+ALTER TABLE users
+  DROP CONSTRAINT IF EXISTS users_punch_fields_array_check,
+  DROP CONSTRAINT IF EXISTS users_clock_offset_minutes_check,
+  DROP CONSTRAINT IF EXISTS users_clock_offset_seconds_check;
+
+ALTER TABLE users
+  ADD CONSTRAINT users_punch_fields_array_check
+  CHECK (jsonb_typeof(punch_fields) = 'array' AND jsonb_array_length(punch_fields) = 7),
+  ADD CONSTRAINT users_clock_offset_minutes_check
+  CHECK (clock_offset_minutes BETWEEN -720 AND 720),
+  ADD CONSTRAINT users_clock_offset_seconds_check
+  CHECK (clock_offset_seconds BETWEEN -43200 AND 43200);
 
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 
@@ -91,12 +110,19 @@ BEGIN
     NEW.is_active := true;
     NEW.avatar_icon := COALESCE(NULLIF(NEW.avatar_icon, ''), 'user');
     NEW.schedule := COALESCE(NEW.schedule, ARRAY[0, 480, 480, 480, 480, 480, 240]);
+    NEW.punch_fields := COALESCE(
+      NEW.punch_fields,
+      '[[], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "exit"]]'::jsonb
+    );
+    NEW.clock_offset_minutes := COALESCE(NEW.clock_offset_minutes, 0);
+    NEW.clock_offset_seconds := COALESCE(NEW.clock_offset_seconds, NEW.clock_offset_minutes * 60, 0);
     RETURN NEW;
   END IF;
 
   NEW.is_admin := OLD.is_admin;
   NEW.is_active := OLD.is_active;
-  NEW.schedule := OLD.schedule;
+  NEW.clock_offset_minutes := COALESCE(NEW.clock_offset_minutes, 0);
+  NEW.clock_offset_seconds := COALESCE(NEW.clock_offset_seconds, NEW.clock_offset_minutes * 60, 0);
   RETURN NEW;
 END;
 $$;
@@ -113,7 +139,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  INSERT INTO public.users (id, email, name, birth_date, company_name, job_title, avatar_icon, is_admin, is_active, schedule)
+  INSERT INTO public.users (id, email, name, birth_date, company_name, job_title, avatar_icon, is_admin, is_active, schedule, punch_fields, clock_offset_minutes, clock_offset_seconds)
   VALUES (
     NEW.id,
     NEW.email,
@@ -124,7 +150,10 @@ BEGIN
     COALESCE(NULLIF(NEW.raw_user_meta_data->>'avatar_icon', ''), 'user'),
     false,
     true,
-    ARRAY[0, 480, 480, 480, 480, 480, 240]
+    ARRAY[0, 480, 480, 480, 480, 480, 240],
+    '[[], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "exit"]]'::jsonb,
+    0,
+    0
   )
   ON CONFLICT (id) DO UPDATE SET
     email = EXCLUDED.email,
@@ -182,10 +211,19 @@ CREATE TABLE IF NOT EXISTS justifications (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   date date NOT NULL,
-  type text NOT NULL DEFAULT 'outro',
+  type text NOT NULL DEFAULT 'justificada',
   reason text,
+  start_time time,
+  end_time time,
   created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (user_id, date)
+  UNIQUE (user_id, date),
+  CONSTRAINT justifications_type_check CHECK (type IN ('falta', 'justificada', 'atestado', 'feriado', 'ferias', 'folga', 'abono')),
+  CONSTRAINT justifications_abono_times_check CHECK (
+    type <> 'abono'
+    OR start_time IS NULL
+    OR end_time IS NULL
+    OR end_time > start_time
+  )
 );
 
 CREATE INDEX IF NOT EXISTS idx_justifications_user_id ON justifications(user_id);
@@ -234,33 +272,4 @@ CREATE POLICY "authenticated_insert_logs" ON logs FOR INSERT TO authenticated
 
 DROP POLICY IF EXISTS "authenticated_select_logs" ON logs;
 CREATE POLICY "authenticated_select_logs" ON logs FOR SELECT
-  TO authenticated USING ((auth.uid() = user_id AND public.is_active_user()) OR public.is_admin_user());
-
-CREATE TABLE IF NOT EXISTS errors (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES users(id) ON DELETE SET NULL,
-  error_code text,
-  context text,
-  message text NOT NULL,
-  detail text,
-  hint text,
-  stack text,
-  metadata jsonb,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_errors_user_id ON errors(user_id);
-CREATE INDEX IF NOT EXISTS idx_errors_created_at ON errors(created_at);
-
-ALTER TABLE errors ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "public_insert_errors" ON errors;
-CREATE POLICY "public_insert_errors" ON errors FOR INSERT TO public WITH CHECK (user_id IS NULL);
-
-DROP POLICY IF EXISTS "authenticated_insert_errors" ON errors;
-CREATE POLICY "authenticated_insert_errors" ON errors FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id AND public.is_active_user());
-
-DROP POLICY IF EXISTS "authenticated_select_errors" ON errors;
-CREATE POLICY "authenticated_select_errors" ON errors FOR SELECT
   TO authenticated USING ((auth.uid() = user_id AND public.is_active_user()) OR public.is_admin_user());

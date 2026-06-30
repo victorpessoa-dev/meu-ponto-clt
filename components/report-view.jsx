@@ -5,13 +5,12 @@ import { BarChart3, ChevronLeft, ChevronRight, EyeOff, Table2 } from "lucide-rea
 import { useAuth, useStoreData } from "@/lib/auth-context"
 import { getMonthJustifications, getMonthRecords } from "@/lib/store"
 import {
-  expectedMinutes,
+  bankMetrics,
   minutesToHHMM,
   monthName,
   scheduleSummary,
   toISODate,
   weekdayShort,
-  workedMinutes,
 } from "@/lib/time-utils"
 import { JUSTIFICATION_LABELS } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -34,75 +33,59 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
   const justifications = useStoreData(() =>
     user ? getMonthJustifications(user.id, cursor.year, cursor.month) : [],
   )
+  const schedule = user?.schedule ?? []
 
-  const recordsByDate = useMemo(() => {
-    const map = new Map()
-    records.forEach((r) => map.set(r.date, r))
-    return map
-  }, [records])
+  const { dayMetrics, maxChartMinutes, totalWorked, totalBalance, workedDays } = useMemo(() => {
+    const recordsByDate = new Map(records.map((record) => [record.date, record]))
+    const justByDate = new Map(justifications.map((justification) => [justification.date, justification]))
+    const daysInMonth = new Date(cursor.year, cursor.month + 1, 0).getDate()
+    const metrics = Array.from({ length: daysInMonth }, (_, index) => {
+      const iso = toISODate(new Date(cursor.year, cursor.month, index + 1))
+      const rec = recordsByDate.get(iso)
+      const just = justByDate.get(iso)
+      return {
+        iso,
+        rec,
+        just,
+        ...bankMetrics(iso, rec, schedule, just),
+        weekend: [0, 6].includes(new Date(iso + "T00:00:00").getDay()),
+      }
+    })
 
-  const justByDate = useMemo(() => {
-    const map = new Map()
-    justifications.forEach((j) => map.set(j.date, j))
-    return map
-  }, [justifications])
+    return metrics.reduce(
+      (acc, day) => {
+        acc.maxChartMinutes = Math.max(acc.maxChartMinutes, day.worked)
+        if (day.bankable) {
+          acc.totalWorked += day.worked
+          acc.totalBalance += day.balance
+          acc.workedDays += 1
+        }
+        return acc
+      },
+      { dayMetrics: metrics, maxChartMinutes: 60, totalWorked: 0, totalBalance: 0, workedDays: 0 },
+    )
+  }, [cursor.month, cursor.year, justifications, records, schedule])
 
   if (!user) return null
 
-  const daysInMonth = new Date(cursor.year, cursor.month + 1, 0).getDate()
-  const days = Array.from({ length: daysInMonth }, (_, i) => {
-    const d = new Date(cursor.year, cursor.month, i + 1)
-    return toISODate(d)
-  })
-  const dayMetrics = days.map((iso) => {
-    const rec = recordsByDate.get(iso)
-    const just = justByDate.get(iso)
-    const worked = workedMinutes(rec)
-    const hasPunch = !!(rec?.entry || rec?.breakTime || rec?.returnTime || rec?.exit)
-    const expected = expectedMinutes(iso, user.schedule)
-    return {
-      iso,
-      rec,
-      just,
-      worked,
-      expected,
-      hasPunch,
-      balance: hasPunch ? worked - expected : null,
-      weekend: [0, 6].includes(new Date(iso + "T00:00:00").getDay()),
-    }
-  })
-  const maxChartMinutes = Math.max(60, ...dayMetrics.map((day) => Math.max(day.worked, day.expected)))
-
-  let totalWorked = 0
-  let totalBalance = 0
-  let workedDays = 0
-  dayMetrics.forEach((day) => {
-    if (day.hasPunch) {
-      totalWorked += day.worked
-      totalBalance += day.worked - day.expected
-      workedDays += 1
-    }
-  })
-
-  function shiftMonth(delta) {
-    setCursor((c) => {
-      const d = new Date(c.year, c.month + delta, 1)
-      return { year: d.getFullYear(), month: d.getMonth() }
-    })
-  }
-
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-2">
-        <Button variant="outline" size="icon" className="touch-target shrink-0" onClick={() => shiftMonth(-1)} aria-label="Mês anterior">
-          <ChevronLeft className="h-5 w-5" />
-        </Button>
-        <span className="min-w-0 flex-1 truncate text-center text-sm font-semibold capitalize text-foreground">
-          {monthName(cursor.month)} de {cursor.year}
-        </span>
-        <Button variant="outline" size="icon" className="touch-target shrink-0" onClick={() => shiftMonth(1)} aria-label="Próximo mês">
-          <ChevronRight className="h-5 w-5" />
-        </Button>
+      <div className="flex flex-col gap-3 rounded-xl border border-primary/20 bg-white p-3 shadow-sm">
+        <CalendarCarousel
+          ariaLabel="Selecionar mês do relatório"
+          getValue={(offset) => (cursor.month + offset + 12) % 12}
+          renderLabel={(month) => monthName(month)}
+          onChange={(month) => setCursor((current) => ({ ...current, month }))}
+          onShift={(delta) => setCursor((current) => ({ ...current, month: (current.month + delta + 12) % 12 }))}
+          className="capitalize"
+        />
+        <CalendarCarousel
+          ariaLabel="Selecionar ano do relatório"
+          getValue={(offset) => cursor.year + offset}
+          renderLabel={(year) => year}
+          onChange={(year) => setCursor((current) => ({ ...current, year }))}
+          onShift={(delta) => setCursor((current) => ({ ...current, year: current.year + delta }))}
+        />
       </div>
 
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
@@ -121,31 +104,21 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
             <BarChart3 className="h-4 w-4 shrink-0 text-primary" />
             <span className="truncate text-sm font-semibold text-foreground">Horas por dia</span>
           </div>
-          <span className="text-xs text-muted-foreground">Trabalhado x jornada</span>
+          <span className="text-xs text-muted-foreground">Saldo por dia</span>
         </div>
         <div className="flex h-40 items-end gap-1 overflow-x-auto pb-1 sm:h-48 sm:gap-1.5">
           {dayMetrics.map((day) => {
             const workedHeight = `${Math.max(4, (day.worked / maxChartMinutes) * 100)}%`
-            const expectedHeight = `${Math.max(4, (day.expected / maxChartMinutes) * 100)}%`
             return (
               <div key={day.iso} className="flex min-w-6 flex-1 flex-col items-center gap-1">
-                <div className="flex h-32 w-full items-end justify-center gap-0.5 sm:h-40">
-                  <span
-                    className="w-2 rounded-t bg-primary/25 transition-all duration-500 ease-out"
-                    style={{ height: expectedHeight }}
-                    title={`Jornada ${minutesToHHMM(day.expected)}`}
-                  />
+                <div className="flex h-32 w-full items-end justify-center sm:h-40">
                   <span
                     className={cn(
-                      "w-2 rounded-t transition-all duration-500 ease-out",
-                      day.balance == null
-                        ? "bg-muted"
-                        : day.balance >= 0
-                          ? "bg-positive"
-                          : "bg-negative",
+                      "w-3 rounded-t transition-all duration-500 ease-out",
+                      !day.bankable ? "bg-muted" : day.balance >= 0 ? "bg-positive" : "bg-negative",
                     )}
                     style={{ height: workedHeight }}
-                    title={`Trabalhado ${minutesToHHMM(day.worked)}`}
+                    title={day.bankable ? `Trabalhado ${minutesToHHMM(day.worked)}` : "Sem banco"}
                   />
                 </div>
                 <span className="text-[10px] text-muted-foreground">{day.iso.split("-")[2]}</span>
@@ -179,13 +152,14 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
           </div>
 
           <div className="divide-y divide-border">
-            {dayMetrics.map(({ iso, rec, just, hasPunch, balance, weekend }) => {
+            {dayMetrics.map(({ iso, rec, just, hasPunch, bankable, balance, weekend, expected }) => {
               return (
                 <div
                   key={iso}
                   className={cn(
                     "grid grid-cols-[3rem_repeat(5,minmax(3.5rem,1fr))] items-center text-sm",
                     weekend && "bg-muted/40",
+                    rowToneClass({ expected, just }),
                   )}
                 >
                   <div className="sticky left-0 z-10 flex flex-col items-center bg-inherit px-2 py-2 leading-tight">
@@ -194,26 +168,22 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
                   </div>
 
                   {!hasPunch && just ? (
-                    <div className="col-span-5 px-2 py-2 sm:px-3">
-                      <span className="inline-block max-w-full truncate rounded bg-accent px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground sm:px-2 sm:text-xs">
-                        {JUSTIFICATION_LABELS[just.type]}
-                      </span>
-                    </div>
+                    <>
+                      <div className="col-span-4 px-2 py-2 sm:px-3">
+                        <span className="inline-block max-w-full truncate rounded bg-accent px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground sm:px-2 sm:text-xs">
+                          {JUSTIFICATION_LABELS[just.type]}
+                          {just.startTime && just.endTime ? ` ${just.startTime}-${just.endTime}` : ""}
+                        </span>
+                      </div>
+                      <BalanceCell bankable={bankable} balance={balance} />
+                    </>
                   ) : (
                     <>
                       <TimeCell value={rec?.entry} tone="entry" />
                       <TimeCell value={rec?.breakTime} />
                       <TimeCell value={rec?.returnTime} />
                       <TimeCell value={rec?.exit} tone="exit" />
-                      <div className="flex items-center justify-center px-2 py-2 font-mono text-[10px] font-bold tabular-nums sm:text-xs">
-                        {balance == null ? (
-                          <span className="text-muted-foreground/40">-</span>
-                        ) : (
-                          <span className={balance >= 0 ? "text-positive" : "text-negative"}>
-                            {minutesToHHMM(balance)}
-                          </span>
-                        )}
-                      </div>
+                      <BalanceCell bankable={bankable} balance={balance} />
                     </>
                   )}
                 </div>
@@ -225,8 +195,52 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
       )}
 
       <p className="px-1 text-center text-xs text-muted-foreground">
-        O banco de horas soma apenas os dias com ponto registrado. Jornada: {scheduleSummary(user.schedule)}.
+        O banco soma dias fechados, faltas e abonos. Férias, folgas, atestados e faltas justificadas não entram no saldo. Jornada: {scheduleSummary(user.schedule)}.
       </p>
+    </div>
+  )
+}
+
+function CalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onShift, className }) {
+  const slots = [-2, -1, 0, 1, 2]
+
+  return (
+    <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
+      <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0" onClick={() => onShift(-1)} aria-label={`${ariaLabel} anterior`}>
+        <ChevronLeft className="h-5 w-5" />
+      </Button>
+      <div className="relative h-16 min-w-0 overflow-hidden rounded-lg bg-primary/5" role="tablist" aria-label={ariaLabel}>
+        <div className="absolute inset-x-0 top-1/2 h-11 -translate-y-1/2">
+          {slots.map((slot) => {
+            const itemValue = getValue(slot)
+            const active = slot === 0
+            return (
+              <button
+                key={`${ariaLabel}-${slot}-${itemValue}`}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => onChange(itemValue)}
+                className={cn(
+                  "absolute top-0 h-11 rounded-lg border px-3 text-sm font-semibold shadow-sm transition-all duration-300 ease-out will-change-transform",
+                  "focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+                  active && "left-[22%] right-[22%] z-20 border-primary bg-primary text-primary-foreground",
+                  slot === -1 && "left-[-5%] right-[73%] z-10 scale-90 border-primary/30 bg-white text-primary opacity-75",
+                  slot === 1 && "left-[73%] right-[-5%] z-10 scale-90 border-primary/30 bg-white text-primary opacity-75",
+                  slot === -2 && "left-[-32%] right-[96%] scale-[0.8] border-primary/20 bg-white text-primary opacity-25",
+                  slot === 2 && "left-[96%] right-[-32%] scale-[0.8] border-primary/20 bg-white text-primary opacity-25",
+                  className,
+                )}
+              >
+                <span className="block truncate">{renderLabel(itemValue)}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0" onClick={() => onShift(1)} aria-label={`Próximo ${ariaLabel}`}>
+        <ChevronRight className="h-5 w-5" />
+      </Button>
     </div>
   )
 }
@@ -254,6 +268,26 @@ function TimeCell({ value, tone, className }) {
       )}
     </div>
   )
+}
+
+function BalanceCell({ bankable, balance }) {
+  return (
+    <div className="flex items-center justify-center px-2 py-2 font-mono text-[10px] font-bold tabular-nums sm:text-xs">
+      {!bankable ? (
+        <span className="text-muted-foreground/40">-</span>
+      ) : (
+        <span className={balance >= 0 ? "text-positive" : "text-negative"}>{minutesToHHMM(balance)}</span>
+      )}
+    </div>
+  )
+}
+
+function rowToneClass({ expected, just }) {
+  if (just?.type === "ferias") return "bg-positive/10"
+  if (just?.type === "falta") return "bg-negative/10"
+  if (["abono", "atestado", "justificada"].includes(just?.type)) return "bg-chart-3/15"
+  if (just?.type === "folga" || expected === 0) return "bg-primary/10"
+  return ""
 }
 
 function SummaryCard({ label, value, tone = "default" }) {

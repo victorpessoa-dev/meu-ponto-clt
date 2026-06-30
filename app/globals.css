@@ -96,6 +96,35 @@
   * {
     @apply border-border outline-ring/50;
   }
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+    button,
+    a,
+    input,
+    textarea,
+    select,
+    [role='button'],
+    [role='tab'],
+    [data-slot='card'],
+    [data-slot='dialog-content'],
+    [data-slot='select-trigger'] {
+      transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+      transition-duration: 220ms;
+      transition-timing-function: ease-out;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
   body {
     @apply bg-background text-foreground;
     -webkit-tap-highlight-color: transparent;

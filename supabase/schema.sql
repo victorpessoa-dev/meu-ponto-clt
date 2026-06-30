@@ -16,6 +16,8 @@ CREATE TABLE public.users (
   is_active boolean NOT NULL DEFAULT true,
   schedule integer[] NOT NULL DEFAULT ARRAY[0, 480, 480, 480, 480, 480, 240],
   punch_fields jsonb NOT NULL DEFAULT '[[], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "exit"]]'::jsonb,
+  clock_offset_minutes integer NOT NULL DEFAULT 0,
+  clock_offset_seconds integer NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT users_avatar_icon_check CHECK (
     avatar_icon IN (
@@ -42,7 +44,9 @@ CREATE TABLE public.users (
     )
   ),
   CONSTRAINT users_schedule_length_check CHECK (array_length(schedule, 1) = 7),
-  CONSTRAINT users_punch_fields_array_check CHECK (jsonb_typeof(punch_fields) = 'array' AND jsonb_array_length(punch_fields) = 7)
+  CONSTRAINT users_punch_fields_array_check CHECK (jsonb_typeof(punch_fields) = 'array' AND jsonb_array_length(punch_fields) = 7),
+  CONSTRAINT users_clock_offset_minutes_check CHECK (clock_offset_minutes BETWEEN -720 AND 720),
+  CONSTRAINT users_clock_offset_seconds_check CHECK (clock_offset_seconds BETWEEN -43200 AND 43200)
 );
 
 CREATE INDEX idx_users_email ON public.users(email);
@@ -67,11 +71,19 @@ CREATE TABLE public.justifications (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   date date NOT NULL,
-  type text NOT NULL DEFAULT 'falta',
+  type text NOT NULL DEFAULT 'justificada',
   reason text,
+  start_time time,
+  end_time time,
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (user_id, date),
-  CONSTRAINT justifications_type_check CHECK (type IN ('falta', 'atestado', 'ferias', 'folga', 'abono'))
+  CONSTRAINT justifications_type_check CHECK (type IN ('falta', 'justificada', 'atestado', 'feriado', 'ferias', 'folga', 'abono')),
+  CONSTRAINT justifications_abono_times_check CHECK (
+    type <> 'abono'
+    OR start_time IS NULL
+    OR end_time IS NULL
+    OR end_time > start_time
+  )
 );
 
 CREATE INDEX idx_justifications_user_id ON public.justifications(user_id);
@@ -89,22 +101,6 @@ CREATE TABLE public.logs (
 
 CREATE INDEX idx_logs_user_id ON public.logs(user_id);
 CREATE INDEX idx_logs_created_at ON public.logs(created_at);
-
-CREATE TABLE public.errors (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES public.users(id) ON DELETE SET NULL,
-  error_code text,
-  context text,
-  message text NOT NULL,
-  detail text,
-  hint text,
-  stack text,
-  metadata jsonb,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_errors_user_id ON public.errors(user_id);
-CREATE INDEX idx_errors_created_at ON public.errors(created_at);
 
 -- Verifica se o usuario autenticado existe no perfil e esta ativo.
 CREATE OR REPLACE FUNCTION public.is_active_user()
@@ -156,6 +152,8 @@ BEGIN
     NEW.avatar_icon := COALESCE(NULLIF(NEW.avatar_icon, ''), 'user');
     NEW.schedule := COALESCE(NEW.schedule, ARRAY[0, 480, 480, 480, 480, 480, 240]);
     NEW.punch_fields := COALESCE(NEW.punch_fields, '[[], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "exit"]]'::jsonb);
+    NEW.clock_offset_minutes := COALESCE(NEW.clock_offset_minutes, 0);
+    NEW.clock_offset_seconds := COALESCE(NEW.clock_offset_seconds, NEW.clock_offset_minutes * 60, 0);
     RETURN NEW;
   END IF;
 
@@ -165,13 +163,15 @@ BEGIN
     NEW.avatar_icon := COALESCE(NULLIF(NEW.avatar_icon, ''), 'user');
     NEW.schedule := COALESCE(NEW.schedule, ARRAY[0, 480, 480, 480, 480, 480, 240]);
     NEW.punch_fields := COALESCE(NEW.punch_fields, '[[], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "exit"]]'::jsonb);
+    NEW.clock_offset_minutes := COALESCE(NEW.clock_offset_minutes, 0);
+    NEW.clock_offset_seconds := COALESCE(NEW.clock_offset_seconds, NEW.clock_offset_minutes * 60, 0);
     RETURN NEW;
   END IF;
 
   NEW.is_admin := OLD.is_admin;
   NEW.is_active := OLD.is_active;
-  NEW.schedule := OLD.schedule;
-  NEW.punch_fields := OLD.punch_fields;
+  NEW.clock_offset_minutes := COALESCE(NEW.clock_offset_minutes, 0);
+  NEW.clock_offset_seconds := COALESCE(NEW.clock_offset_seconds, NEW.clock_offset_minutes * 60, 0);
   NEW.avatar_icon := COALESCE(NULLIF(NEW.avatar_icon, ''), OLD.avatar_icon, 'user');
   RETURN NEW;
 END;
@@ -196,7 +196,9 @@ BEGIN
     is_admin,
     is_active,
     schedule,
-    punch_fields
+    punch_fields,
+    clock_offset_minutes,
+    clock_offset_seconds
   )
   VALUES (
     NEW.id,
@@ -209,7 +211,9 @@ BEGIN
     false,
     true,
     ARRAY[0, 480, 480, 480, 480, 480, 240],
-    '[[], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "exit"]]'::jsonb
+    '[[], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "exit"]]'::jsonb,
+    0,
+    0
   )
   ON CONFLICT (id) DO UPDATE SET
     email = EXCLUDED.email,
@@ -257,7 +261,6 @@ ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.time_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.justifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.errors ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY authenticated_select_users ON public.users FOR SELECT
   TO authenticated USING (auth.uid() = id OR public.is_admin_user());
@@ -305,13 +308,4 @@ CREATE POLICY authenticated_insert_logs ON public.logs FOR INSERT
   TO authenticated WITH CHECK (auth.uid() = user_id AND public.is_active_user());
 
 CREATE POLICY authenticated_select_logs ON public.logs FOR SELECT
-  TO authenticated USING ((auth.uid() = user_id AND public.is_active_user()) OR public.is_admin_user());
-
-CREATE POLICY public_insert_errors ON public.errors FOR INSERT
-  TO public WITH CHECK (user_id IS NULL);
-
-CREATE POLICY authenticated_insert_errors ON public.errors FOR INSERT
-  TO authenticated WITH CHECK (auth.uid() = user_id AND public.is_active_user());
-
-CREATE POLICY authenticated_select_errors ON public.errors FOR SELECT
   TO authenticated USING ((auth.uid() = user_id AND public.is_active_user()) OR public.is_admin_user());

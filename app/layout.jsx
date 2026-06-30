@@ -62,7 +62,7 @@ export default function RootLayout({ children }) {
       <body className="font-sans antialiased">
         {children}
         <ServiceWorkerRegister />
-        <Toaster position="top-center" richColors />
+        <Toaster position="top-center" />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
