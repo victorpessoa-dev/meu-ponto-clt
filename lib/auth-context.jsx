@@ -10,6 +10,7 @@ import {
   login as storeLogin,
   logout as storeLogout,
   register as storeRegister,
+  requestPasswordReset as storeRequestPasswordReset,
   refreshStore,
   subscribe,
 } from "./store"
@@ -67,7 +68,15 @@ export function AuthProvider({ children }) {
     return storeRegister(data)
   }, [])
 
-  return <AuthContext.Provider value={{ user, ready, login, logout, register }}>{children}</AuthContext.Provider>
+  const requestPasswordReset = useCallback(async (email) => {
+    return storeRequestPasswordReset(email)
+  }, [])
+
+  return (
+    <AuthContext.Provider value={{ user, ready, login, logout, register, requestPasswordReset }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {

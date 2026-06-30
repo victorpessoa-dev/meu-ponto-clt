@@ -1,0 +1,195 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { CheckCircle2, Clock, KeyRound, TriangleAlert } from "lucide-react"
+import Link from "next/link"
+import { useRouter, useSearchParams } from "next/navigation"
+import { supabase } from "@/lib/supabase"
+import { getPasswordChecks, validateStrongPassword } from "@/lib/security-utils"
+import { updateAccountPassword } from "@/lib/store"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { PasswordField } from "@/components/password-field"
+
+export function PasswordResetScreen() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const code = searchParams.get("code")
+  const [ready, setReady] = useState(false)
+  const [checking, setChecking] = useState(true)
+  const [password, setPassword] = useState("")
+  const [confirm, setConfirm] = useState("")
+  const [error, setError] = useState(null)
+  const [done, setDone] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const passwordChecks = getPasswordChecks(password)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function prepareRecovery() {
+      setChecking(true)
+      setError(null)
+
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+        if (exchangeError && !cancelled) {
+          setError(exchangeError.message || "Nao foi possivel validar o link de redefinicao.")
+          setReady(false)
+          setChecking(false)
+          return
+        }
+      }
+
+      const { data } = await supabase.auth.getSession()
+      if (cancelled) return
+
+      setReady(!!data.session)
+      setChecking(false)
+      if (!data.session) setError("Abra o link de redefinicao enviado para seu e-mail.")
+    }
+
+    prepareRecovery()
+
+    return () => {
+      cancelled = true
+    }
+  }, [code])
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError(null)
+
+    const passwordError = validateStrongPassword(password)
+    if (passwordError) {
+      setError(passwordError)
+      return
+    }
+
+    if (password !== confirm) {
+      setError("As senhas nao coincidem.")
+      return
+    }
+
+    setLoading(true)
+    const res = await updateAccountPassword(password)
+    setLoading(false)
+
+    if (res?.error) {
+      setError(res.error)
+      return
+    }
+
+    setPassword("")
+    setConfirm("")
+    setDone(true)
+    window.setTimeout(() => router.replace("/login?senhaAlterada=1"), 2500)
+  }
+
+  const Icon = done ? CheckCircle2 : checking ? Clock : ready ? KeyRound : TriangleAlert
+
+  return (
+    <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-primary px-safe py-8 pt-safe pb-safe sm:py-10">
+      <div className="pointer-events-none absolute inset-x-8 top-8 h-32 rounded-full bg-positive/20 blur-3xl animate-soft-pulse" />
+      <div className="w-full max-w-sm animate-fade-slide">
+        <div className="mb-6 flex flex-col items-center text-center sm:mb-8">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-foreground/10 ring-1 ring-primary-foreground/20 animate-float">
+            <Icon className="h-8 w-8 text-primary-foreground" strokeWidth={2.25} />
+          </div>
+          <h1 className="mt-4 text-2xl font-bold tracking-tight text-primary-foreground">
+            {done ? "Senha atualizada" : "Redefinir senha"}
+          </h1>
+          <p className="mt-1 text-sm text-primary-foreground/70">
+            {checking ? "Validando o link de acesso" : "Crie uma nova senha de acesso"}
+          </p>
+        </div>
+
+        <Card className="border-0 shadow-xl">
+          <CardContent className="px-4 py-5 sm:px-6 sm:py-6">
+            {checking && <p className="text-center text-sm text-muted-foreground">Aguarde um instante.</p>}
+
+            {!checking && done && (
+              <div className="flex flex-col gap-4 text-center">
+                <p className="text-sm leading-6 text-muted-foreground">
+                  Sua senha foi atualizada. Voce sera redirecionado para o login.
+                </p>
+                <Button asChild className="h-11 w-full">
+                  <Link href="/login">Ir para login</Link>
+                </Button>
+              </div>
+            )}
+
+            {!checking && !done && ready && (
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                  Informe uma nova senha forte para finalizar a redefinicao.
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="new-password">Nova senha</Label>
+                  <PasswordField
+                    id="new-password"
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={8}
+                  />
+                  {password && (
+                    <div className="grid grid-cols-1 gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+                      {passwordChecks.map((check) => (
+                        <span key={check.key} className={check.valid ? "text-positive" : "text-muted-foreground"}>
+                          {check.valid ? "OK" : "--"} {check.label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="confirm-password">Confirmar senha</Label>
+                  <PasswordField
+                    id="confirm-password"
+                    autoComplete="off"
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    required
+                    minLength={8}
+                  />
+                  {confirm && (
+                    <p className={cn("text-xs", password === confirm ? "text-positive" : "text-destructive")}>
+                      {password === confirm ? "Senhas conferem." : "As senhas ainda nao conferem."}
+                    </p>
+                  )}
+                </div>
+
+                {error && (
+                  <p className="rounded-md border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+                    {error}
+                  </p>
+                )}
+
+                <Button type="submit" className="h-11 w-full text-base" disabled={loading}>
+                  {loading ? "Salvando..." : "Salvar nova senha"}
+                </Button>
+              </form>
+            )}
+
+            {!checking && !done && !ready && (
+              <div className="flex flex-col gap-4 text-center">
+                <p className="rounded-md border border-chart-3/30 bg-chart-3/10 px-3 py-2 text-sm text-chart-3" role="alert">
+                  {error || "Link invalido ou expirado."}
+                </p>
+                <Button asChild className="h-11 w-full">
+                  <Link href="/login">Voltar ao login</Link>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </main>
+  )
+}

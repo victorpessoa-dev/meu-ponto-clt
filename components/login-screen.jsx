@@ -1,7 +1,7 @@
 ﻿"use client"
 
 import { useState } from "react"
-import { Clock } from "lucide-react"
+import { Clock, MailCheck } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
@@ -11,23 +11,41 @@ import { Card, CardContent } from "@/components/ui/card"
 import { PasswordField } from "@/components/password-field"
 
 export function LoginScreen({ onSuccess }) {
-  const { login } = useAuth()
+  const { login, requestPasswordReset } = useAuth()
   const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL
   const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD
   const showDemoLogin = process.env.NEXT_PUBLIC_SHOW_DEMO_LOGIN === "true" && demoEmail && demoPassword
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState(null)
+  const [message, setMessage] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
+    setMessage(null)
     setLoading(true)
     const res = await login(email.trim(), password)
     setLoading(false)
     if (res?.error) setError(res.error)
     else onSuccess?.()
+  }
+
+  async function handlePasswordReset() {
+    setError(null)
+    setMessage(null)
+    setResetLoading(true)
+    const res = await requestPasswordReset(email)
+    setResetLoading(false)
+
+    if (res?.error) {
+      setError(res.error)
+      return
+    }
+
+    setMessage("Enviamos um link para redefinir sua senha. Abra o e-mail e continue por la.")
   }
 
   return (
@@ -67,12 +85,26 @@ export function LoginScreen({ onSuccess }) {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+                <button
+                  type="button"
+                  onClick={handlePasswordReset}
+                  disabled={resetLoading}
+                  className="self-end text-xs font-semibold text-primary underline-offset-2 transition-all duration-200 hover:-translate-y-0.5 hover:underline disabled:pointer-events-none disabled:opacity-60"
+                >
+                  {resetLoading ? "Enviando..." : "Esqueci minha senha"}
+                </button>
               </div>
 
               {error && (
                 <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
                   {error}
                 </p>
+              )}
+              {message && (
+                <div className="flex gap-2 rounded-md border border-positive/25 bg-positive/10 px-3 py-2 text-sm text-positive" role="status">
+                  <MailCheck className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{message}</span>
+                </div>
               )}
 
               <Button type="submit" className="mt-1 h-11 w-full text-base" disabled={loading}>

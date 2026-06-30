@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Building2, BriefcaseBusiness, CalendarDays, Clock, KeyRound, MailCheck, UserRound } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { calculateAge, isAdult } from "@/lib/profile-utils"
 import { getPasswordChecks, normalizeEmail, validateEmail, validateStrongPassword } from "@/lib/security-utils"
@@ -21,6 +22,7 @@ const STEPS = [
 
 export function RegisterScreen() {
   const { register } = useAuth()
+  const router = useRouter()
   const [step, setStep] = useState("dados")
   const [name, setName] = useState("")
   const [birthDate, setBirthDate] = useState("")
@@ -99,7 +101,8 @@ export function RegisterScreen() {
 
     setPassword("")
     setConfirm("")
-    setMessage("Enviamos um e-mail de confirmacao para concluir seu cadastro. Depois de confirmar, entre pelo login.")
+    setMessage("Enviamos um e-mail de confirmacao para concluir seu cadastro.")
+    router.replace(`/confirmar-email?email=${encodeURIComponent(cleanEmail)}`)
   }
 
   return (
