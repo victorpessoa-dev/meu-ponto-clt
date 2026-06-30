@@ -9,6 +9,7 @@ import {
   FileSpreadsheet,
   KeyRound,
   Minus,
+  Pencil,
   Plus,
   RotateCcw,
   LogOut,
@@ -47,6 +48,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { PasswordField } from "@/components/password-field"
 import { toast } from "sonner"
 
@@ -108,6 +119,7 @@ function ProfileSection() {
   const [password, setPassword] = useState("")
   const [confirm, setConfirm] = useState("")
   const [activeDialog, setActiveDialog] = useState(null)
+  const [profileConfirmAction, setProfileConfirmAction] = useState(null)
   const age = calculateAge(birthDate)
 
   useEffect(() => {
@@ -281,7 +293,7 @@ function ProfileSection() {
         <div className="flex justify-center">
           <Button
             variant="outline"
-            onClick={logout}
+            onClick={() => setProfileConfirmAction("logout")}
             className="h-10 w-full border-destructive/25 bg-destructive/10 text-destructive transition-all duration-200 ease-out hover:border-destructive/40 hover:bg-destructive/15 hover:text-destructive sm:max-w-xs"
           >
             <LogOut className="mr-2 h-4 w-4" />
@@ -348,7 +360,7 @@ function ProfileSection() {
           </div>
           <DialogFooter>
             <Button variant="outline" type="button" onClick={() => setActiveDialog(null)}>Cancelar</Button>
-            <Button type="button" onClick={async () => (await saveProfile()) && setActiveDialog(null)}>
+            <Button type="button" onClick={() => setProfileConfirmAction("profile")}>
               <Save className="mr-2 h-4 w-4" />
               Salvar perfil
             </Button>
@@ -387,7 +399,7 @@ function ProfileSection() {
           </div>
           <DialogFooter>
             <Button variant="outline" type="button" onClick={() => setActiveDialog(null)}>Cancelar</Button>
-            <Button type="button" onClick={async () => (await saveLogin()) && setActiveDialog(null)}>
+            <Button type="button" onClick={() => setProfileConfirmAction("login")}>
               <Save className="mr-2 h-4 w-4" />
               Salvar login
             </Button>
@@ -459,7 +471,7 @@ function ProfileSection() {
           </div>
           <DialogFooter>
             <Button variant="outline" type="button" onClick={() => setActiveDialog(null)}>Cancelar</Button>
-            <Button type="button" onClick={async () => (await saveSchedule()) && setActiveDialog(null)}>
+            <Button type="button" onClick={() => setProfileConfirmAction("schedule")}>
               <Save className="mr-2 h-4 w-4" />
               Salvar jornada
             </Button>
@@ -489,13 +501,55 @@ function ProfileSection() {
           </div>
           <DialogFooter>
             <Button variant="outline" type="button" onClick={() => setActiveDialog(null)}>Cancelar</Button>
-            <Button type="button" onClick={async () => (await saveClock()) && setActiveDialog(null)}>
+            <Button type="button" onClick={() => setProfileConfirmAction("clock")}>
               <Save className="mr-2 h-4 w-4" />
               Salvar relógio
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!profileConfirmAction} onOpenChange={(open) => !open && setProfileConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {profileConfirmAction === "logout" ? "Sair da conta?" : "Confirmar salvamento?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {profileConfirmAction === "logout"
+                ? "Você precisará entrar novamente para continuar usando o sistema."
+                : "As alterações serão aplicadas ao seu perfil e usadas nos cálculos do sistema."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              variant={profileConfirmAction === "logout" ? "destructive" : "default"}
+              onClick={async () => {
+                const action = profileConfirmAction
+                setProfileConfirmAction(null)
+                if (action === "logout") {
+                  await logout()
+                  return
+                }
+                const saved =
+                  action === "profile"
+                    ? await saveProfile()
+                    : action === "login"
+                      ? await saveLogin()
+                      : action === "schedule"
+                        ? await saveSchedule()
+                        : action === "clock"
+                          ? await saveClock()
+                          : false
+                if (saved) setActiveDialog(null)
+              }}
+            >
+              {profileConfirmAction === "logout" ? "Sair" : "Confirmar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   )
 }
@@ -568,6 +622,7 @@ function JustifySection() {
   const [reason, setReason] = useState("")
   const [startTime, setStartTime] = useState("")
   const [endTime, setEndTime] = useState("")
+  const [confirmAction, setConfirmAction] = useState(null)
 
   const justifications = useStoreData(() =>
     getJustifications()
@@ -575,21 +630,21 @@ function JustifySection() {
       .sort((a, b) => (a.date < b.date ? 1 : -1)),
   )
 
-  async function save() {
+  function buildSavePayload() {
     if (!date) {
       toast.error("Selecione a data.")
-      return
+      return null
     }
     if (type === "abono" && (!startTime || !endTime || endTime <= startTime)) {
       toast.error("Informe o horário inicial e final do abono.")
-      return
+      return null
     }
 
     const dates = []
     if (type === "ferias") {
       if (!endDate || endDate < date) {
         toast.error("Informe um período de férias válido.")
-        return
+        return null
       }
       const cursor = parseISODate(date)
       const end = parseISODate(endDate)
@@ -601,10 +656,26 @@ function JustifySection() {
       dates.push(date)
     }
 
-    for (const itemDate of dates) {
-      const res = await saveJustification(user.id, itemDate, type, reason.trim(), {
-        startTime: type === "abono" ? startTime : "",
-        endTime: type === "abono" ? endTime : "",
+    return {
+      kind: "save",
+      dates,
+      type,
+      reason: reason.trim(),
+      startTime: type === "abono" ? startTime : "",
+      endTime: type === "abono" ? endTime : "",
+    }
+  }
+
+  function requestSave() {
+    const payload = buildSavePayload()
+    if (payload) setConfirmAction(payload)
+  }
+
+  async function confirmSave(action) {
+    for (const itemDate of action.dates) {
+      const res = await saveJustification(user.id, itemDate, action.type, action.reason, {
+        startTime: action.startTime,
+        endTime: action.endTime,
       })
       if (res?.error) {
         toast.error(res.error)
@@ -612,7 +683,26 @@ function JustifySection() {
       }
     }
     setReason("")
-    toast.success(type === "ferias" ? `${dates.length} dia(s) de férias registrado(s).` : "Justificativa registrada.")
+    toast.success(action.type === "ferias" ? `${action.dates.length} dia(s) de férias registrado(s).` : "Justificativa registrada.")
+  }
+
+  async function confirmDelete(item) {
+    const res = await deleteJustification(user.id, item.date)
+    if (res?.error) {
+      toast.error(res.error)
+      return
+    }
+    toast.success("Justificativa removida.")
+  }
+
+  function editJustification(item) {
+    setDate(item.date)
+    setEndDate(item.date)
+    setType(item.type)
+    setReason(item.reason ?? "")
+    setStartTime(item.startTime ?? "")
+    setEndTime(item.endTime ?? "")
+    toast.info("Revise os dados e confirme em Registrar justificativa.")
   }
 
   return (
@@ -621,49 +711,47 @@ function JustifySection() {
         <CardHeader>
           <CardTitle className="text-base">Justificar falta ou ausência</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4 px-4 py-4 sm:px-5">
-          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="just-date">{type === "ferias" ? "Início" : "Data"}</Label>
-                <Input id="just-date" type="date" value={date} max={todayISO()} onChange={(e) => setDate(e.target.value)} />
-              </div>
-              {type === "ferias" && (
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="just-end-date">Fim</Label>
-                  <Input id="just-end-date" type="date" value={endDate} max={todayISO()} onChange={(e) => setEndDate(e.target.value)} />
-                </div>
-              )}
+        <CardContent className="flex flex-col gap-3 px-4 py-4 sm:px-5">
+          <div className={cn("grid grid-cols-1 gap-3", type === "ferias" ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
+            <div className="flex flex-col gap-2">
+              <Label>Tipo</Label>
+              <Select
+                value={type}
+                onValueChange={(value) => {
+                  setType(value)
+                  if (value !== "abono") {
+                    setStartTime("")
+                    setEndTime("")
+                  }
+                  if (value === "ferias") setEndDate(date)
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(JUSTIFICATION_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label>Tipo</Label>
-            <Select
-              value={type}
-              onValueChange={(value) => {
-                setType(value)
-                if (value !== "abono") {
-                  setStartTime("")
-                  setEndTime("")
-                }
-                if (value === "ferias") setEndDate(date)
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(JUSTIFICATION_LABELS).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="just-date">{type === "ferias" ? "Início" : "Data"}</Label>
+              <Input id="just-date" type="date" value={date} max={todayISO()} onChange={(e) => setDate(e.target.value)} />
+            </div>
+            {type === "ferias" && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="just-end-date">Fim</Label>
+                <Input id="just-end-date" type="date" value={endDate} max={todayISO()} onChange={(e) => setEndDate(e.target.value)} />
+              </div>
+            )}
           </div>
           {type === "abono" && (
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="abono-start">Horário inicial</Label>
                   <Input id="abono-start" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
@@ -689,7 +777,7 @@ function JustifySection() {
               className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
             />
           </div>
-          <Button onClick={save}>
+          <Button onClick={requestSave}>
             <Save className="mr-2 h-4 w-4" />
             Registrar justificativa
           </Button>
@@ -713,27 +801,54 @@ function JustifySection() {
                     {j.reason ? ` - ${j.reason}` : ""}
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0 text-destructive hover:text-destructive"
-                  onClick={async () => {
-                    const res = await deleteJustification(user.id, j.date)
-                    if (res?.error) {
-                      toast.error(res.error)
-                      return
-                    }
-                    toast.success("Justificativa removida.")
-                  }}
-                  aria-label="Remover"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="flex shrink-0 gap-1">
+                  <Button variant="ghost" size="icon" onClick={() => editJustification(j)} aria-label="Editar">
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setConfirmAction({ kind: "delete", item: j })}
+                    aria-label="Remover"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             ))}
           </CardContent>
         </Card>
       )}
+
+      <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction?.kind === "delete" ? "Remover justificativa?" : "Confirmar justificativa?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction?.kind === "delete"
+                ? `${friendlyDate(confirmAction.item.date)} - ${JUSTIFICATION_LABELS[confirmAction.item.type]}.`
+                : `${JUSTIFICATION_LABELS[confirmAction?.type]} em ${confirmAction?.dates?.length ?? 0} dia(s).`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              variant={confirmAction?.kind === "delete" ? "destructive" : "default"}
+              onClick={async () => {
+                const action = confirmAction
+                setConfirmAction(null)
+                if (action?.kind === "delete") await confirmDelete(action.item)
+                if (action?.kind === "save") await confirmSave(action)
+              }}
+            >
+              {confirmAction?.kind === "delete" ? "Remover" : "Confirmar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -742,6 +857,7 @@ function SpreadsheetSection({ onImportComplete }) {
   const { user } = useAuth()
   const [importing, setImporting] = useState(false)
   const [importYear, setImportYear] = useState(String(new Date().getFullYear()))
+  const [pendingImport, setPendingImport] = useState(null)
   const records = useStoreData(() =>
     getRecords()
       .filter((record) => record.userId === user.id)
@@ -785,6 +901,23 @@ function SpreadsheetSection({ onImportComplete }) {
     )
   }
 
+  async function confirmImport(action) {
+    setImporting(true)
+    try {
+      const res = await importRecords(user.id, action.records)
+      if (res?.error) {
+        toast.error(res.error)
+        return
+      }
+
+      toast.success(`${res.count} registro(s) importado(s).`)
+      onImportComplete?.(res)
+    } finally {
+      setPendingImport(null)
+      setImporting(false)
+    }
+  }
+
   async function handleFile(event) {
     const file = event.target.files?.[0]
     event.target.value = ""
@@ -820,14 +953,7 @@ function SpreadsheetSection({ onImportComplete }) {
         return
       }
 
-      const res = await importRecords(user.id, importedRecords)
-      if (res?.error) {
-        toast.error(res.error)
-        return
-      }
-
-      toast.success(`${res.count} registro(s) importado(s).`)
-      onImportComplete?.(res)
+      setPendingImport({ fileName: file.name, records: importedRecords })
     } catch {
       toast.error("Não foi possível ler a planilha.")
     } finally {
@@ -886,6 +1012,30 @@ function SpreadsheetSection({ onImportComplete }) {
           </p>
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!pendingImport} onOpenChange={(open) => !open && setPendingImport(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar importação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingImport
+                ? `${pendingImport.records.length} registro(s) de ${pendingImport.fileName} serão importados e podem atualizar dias existentes.`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                const action = pendingImport
+                if (action) await confirmImport(action)
+              }}
+            >
+              Importar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Card>
         <CardContent className="flex items-center justify-between gap-3 px-4 py-4 sm:px-5">

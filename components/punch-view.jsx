@@ -5,9 +5,11 @@ import { BarChart3, ChevronLeft, ChevronRight, DoorOpen, LogIn, LogOut, Coffee, 
 import { useAuth, useStoreData } from "@/lib/auth-context"
 import {
   getJustification,
+  getJustifications,
   getMonthJustifications,
   getMonthRecords,
   getRecord,
+  getRecords,
   punch,
 } from "@/lib/store"
 import {
@@ -86,6 +88,10 @@ export function PunchView() {
   const monthJustifications = useStoreData(() =>
     user ? getMonthJustifications(user.id, parseISODate(date).getFullYear(), parseISODate(date).getMonth()) : [],
   )
+  const allRecords = useStoreData(() => (user ? getRecords().filter((item) => item.userId === user.id) : []))
+  const allJustifications = useStoreData(() =>
+    user ? getJustifications().filter((item) => item.userId === user.id) : [],
+  )
 
   const schedule = user?.schedule ?? []
   const metrics = bankMetrics(date, record, schedule, justification)
@@ -100,6 +106,10 @@ export function PunchView() {
   const monthChart = useMemo(
     () => buildMonthChart(date, monthRecords, monthJustifications, schedule),
     [date, monthJustifications, monthRecords, schedule],
+  )
+  const totalAverageWorked = useMemo(
+    () => buildAverageWorked(allRecords, allJustifications, schedule),
+    [allJustifications, allRecords, schedule],
   )
 
   if (!user) return null
@@ -262,7 +272,7 @@ export function PunchView() {
       )}
 
       <MonthSummaryCards chart={monthChart} />
-      <MonthOverview chart={monthChart} selectedDate={date} />
+      <MonthOverview chart={monthChart} selectedDate={date} totalAverageWorked={totalAverageWorked} />
     </div>
   )
 }
@@ -296,6 +306,7 @@ function buildMonthChart(date, records, justifications, schedule) {
   const bankableDays = days.filter((day) => day.bankable)
   const totalWorked = bankableDays.reduce((total, day) => total + day.worked, 0)
   const totalBalance = bankableDays.reduce((total, day) => total + day.balance, 0)
+  const averageWorked = bankableDays.length > 0 ? totalWorked / bankableDays.length : 0
   const maxMinutes = Math.max(60, ...days.map((day) => day.worked))
 
   return {
@@ -303,9 +314,20 @@ function buildMonthChart(date, records, justifications, schedule) {
     days,
     totalWorked,
     totalBalance,
+    averageWorked,
     closedCount: bankableDays.length,
     maxMinutes,
   }
+}
+
+function buildAverageWorked(records, justifications, schedule) {
+  const justByDate = new Map(justifications.map((justification) => [justification.date, justification]))
+  const bankable = records
+    .map((record) => bankMetrics(record.date, record, schedule, justByDate.get(record.date)))
+    .filter((metrics) => metrics.bankable)
+
+  if (bankable.length === 0) return 0
+  return bankable.reduce((total, metrics) => total + metrics.worked, 0) / bankable.length
 }
 
 function MonthSummaryCards({ chart }) {
@@ -322,7 +344,10 @@ function MonthSummaryCards({ chart }) {
   )
 }
 
-function MonthOverview({ chart, selectedDate }) {
+function MonthOverview({ chart, selectedDate, totalAverageWorked }) {
+  const chartMaxMinutes = Math.max(chart.maxMinutes, totalAverageWorked, 60)
+  const totalAverageTop = `${100 - Math.min(100, (totalAverageWorked / chartMaxMinutes) * 100)}%`
+
   return (
     <Card className="overflow-hidden p-4 animate-fade-slide">
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -338,16 +363,29 @@ function MonthOverview({ chart, selectedDate }) {
         </span>
       </div>
 
-      <div className="flex h-44 items-end gap-1 overflow-x-auto pb-1 sm:h-56">
+      <div className="relative flex h-44 items-end gap-1 overflow-x-auto pb-1 sm:h-56">
+        {totalAverageWorked > 0 && (
+          <span
+            className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-primary/70"
+            style={{ top: totalAverageTop }}
+            title={`Média total ${minutesToHHMM(Math.round(totalAverageWorked))}`}
+          />
+        )}
         {chart.days.map((day) => {
-          const workedHeight = `${Math.max(5, (day.worked / chart.maxMinutes) * 100)}%`
+          const workedHeight = `${Math.max(5, (day.worked / chartMaxMinutes) * 100)}%`
           const active = day.iso === selectedDate || day.iso === todayISO()
           return (
-            <div key={day.iso} className={cn("flex min-w-5 flex-1 flex-col items-center gap-1 rounded-md px-0.5", active && "bg-primary/10")}>
+            <div
+              key={day.iso}
+              className={cn(
+                "group/homebar flex min-w-5 flex-1 flex-col items-center gap-1 rounded-md px-0.5 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-primary/5 hover:shadow-sm",
+                active && "bg-primary/10",
+              )}
+            >
               <div className="flex h-36 w-full items-end justify-center sm:h-48">
                 <span
                   className={cn(
-                    "w-3 rounded-t transition-all duration-500",
+                    "w-3 origin-bottom rounded-t transition-all duration-500 group-hover/homebar:scale-y-105",
                     chartBarClass(day),
                     active && "ring-2 ring-primary ring-offset-1 ring-offset-background",
                     day.future && "opacity-30",
@@ -362,7 +400,7 @@ function MonthOverview({ chart, selectedDate }) {
         })}
       </div>
 
-      <div className="mt-3 flex items-center justify-center gap-4 text-[11px] text-muted-foreground">
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground">
         <span className="inline-flex items-center gap-1">
           <span className="h-2 w-2 rounded-full bg-positive" />
           Positivo
@@ -378,6 +416,10 @@ function MonthOverview({ chart, selectedDate }) {
         <span className="inline-flex items-center gap-1">
           <span className="h-2 w-2 rounded-full bg-chart-5" />
           Feriado
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-px w-3 border-t border-dashed border-primary/70" />
+          Média total
         </span>
       </div>
     </Card>

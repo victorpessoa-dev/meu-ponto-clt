@@ -117,7 +117,7 @@ export function AdminView() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
               onClick={async () => {
                 if (toDelete) {
                   const res = await deactivateUser(toDelete.id)
@@ -151,6 +151,7 @@ function UserDialog({ state, onClose, currentId }) {
   const [scheduleHours, setScheduleHours] = useState([])
   const [punchFields, setPunchFields] = useState(DEFAULT_PUNCH_FIELDS)
   const [loadedId, setLoadedId] = useState(null)
+  const [confirmSaveOpen, setConfirmSaveOpen] = useState(false)
 
   const key = state.open ? (editing?.id ?? "new") : "closed"
 
@@ -244,8 +245,9 @@ function UserDialog({ state, onClose, currentId }) {
   }
 
   return (
-    <Dialog open={state.open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-md">
+    <>
+      <Dialog open={state.open} onOpenChange={(o) => !o && onClose()}>
+        <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{editing ? "Editar usuário" : "Novo usuário"}</DialogTitle>
           <DialogDescription>
@@ -377,9 +379,32 @@ function UserDialog({ state, onClose, currentId }) {
           <Button variant="outline" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={save}>{editing ? "Salvar" : "Criar usuário"}</Button>
+          <Button onClick={() => setConfirmSaveOpen(true)}>{editing ? "Salvar" : "Criar usuário"}</Button>
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirmSaveOpen} onOpenChange={setConfirmSaveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{editing ? "Salvar alterações?" : "Criar usuário?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {editing ? "Os dados e permissões do usuário serão atualizados." : "O novo usuário será criado com os dados informados."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                setConfirmSaveOpen(false)
+                await save()
+              }}
+            >
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

@@ -18,6 +18,16 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
@@ -29,6 +39,7 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
   const [showSheet, setShowSheet] = useState(true)
   const [editDate, setEditDate] = useState(null)
   const [editValues, setEditValues] = useState({ entry: "", breakTime: "", returnTime: "", exit: "" })
+  const [confirmSaveOpen, setConfirmSaveOpen] = useState(false)
 
   useEffect(() => {
     if (!cursorOverride) return
@@ -46,7 +57,7 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
   )
   const schedule = user?.schedule ?? []
 
-  const { dayMetrics, maxChartMinutes } = useMemo(() => {
+  const { dayMetrics, maxChartMinutes, averageWorked } = useMemo(() => {
     const recordsByDate = new Map(records.map((record) => [record.date, record]))
     const justByDate = new Map(justifications.map((justification) => [justification.date, justification]))
     const daysInMonth = new Date(cursor.year, cursor.month + 1, 0).getDate()
@@ -64,9 +75,12 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
       }
     })
 
+    const bankable = metrics.filter((day) => day.bankable)
+
     return {
       dayMetrics: metrics,
       maxChartMinutes: Math.max(60, ...metrics.map((day) => day.worked)),
+      averageWorked: bankable.length > 0 ? bankable.reduce((total, day) => total + day.worked, 0) / bankable.length : 0,
     }
   }, [cursor.month, cursor.year, justifications, records, schedule])
 
@@ -78,6 +92,8 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
   if (!user) return null
 
   const editDay = dayMetrics.find((day) => day.iso === editDate)
+  const chartMaxMinutes = Math.max(maxChartMinutes, averageWorked, 60)
+  const monthAverageTop = `${100 - Math.min(100, (averageWorked / chartMaxMinutes) * 100)}%`
 
   function openEdit(day) {
     setEditDate(day.iso)
@@ -152,20 +168,25 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
           </div>
           <span className="text-xs text-muted-foreground">Saldo por dia</span>
         </div>
-        <div className="flex h-40 items-end gap-1 overflow-x-auto pb-1 sm:h-48 sm:gap-1.5">
+        <div className="relative flex h-40 items-end gap-1 overflow-x-auto pb-1 sm:h-48 sm:gap-1.5">
+          {averageWorked > 0 && (
+            <span
+              className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-chart-3/80"
+              style={{ top: monthAverageTop }}
+              title={`Média mensal ${minutesToHHMM(Math.round(averageWorked))}`}
+            />
+          )}
           {dayMetrics.map((day) => {
-            const workedHeight = `${Math.max(4, (day.worked / maxChartMinutes) * 100)}%`
+            const workedHeight = `${Math.max(4, (day.worked / chartMaxMinutes) * 100)}%`
             const focused = day.iso === editDate || day.iso === todayISO()
             return (
-              <button
+              <div
                 key={day.iso}
-                type="button"
-                onClick={() => openEdit(day)}
                 className={cn(
-                  "group/day flex min-w-6 flex-1 flex-col items-center gap-1 rounded-md px-0.5 outline-none transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-primary/5 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-ring/60",
+                  "group/day flex min-w-6 flex-1 cursor-default flex-col items-center gap-1 rounded-md px-0.5 outline-none transition-all duration-200 ease-out hover:bg-primary/5",
                   focused && "bg-primary/10",
                 )}
-                aria-label={`Editar dia ${day.iso.split("-")[2]}`}
+                title={dayTitle(day)}
               >
                 <div className="flex h-32 w-full items-end justify-center sm:h-40">
                   <span
@@ -179,7 +200,7 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
                   />
                 </div>
                 <span className="text-[10px] text-muted-foreground">{day.iso.split("-")[2]}</span>
-              </button>
+              </div>
             )
           })}
         </div>
@@ -187,7 +208,7 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
       </Card>
 
       <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-center text-xs text-primary">
-        Para ajustar entrada, pausa, retorno ou saída, clique em um dia do gráfico ou em uma linha da planilha.
+        Para ajustar entrada, pausa, retorno ou saída, clique em uma linha da planilha.
       </div>
 
       <div className="grid grid-cols-[1fr_auto] items-center gap-2 sm:gap-3">
@@ -205,14 +226,14 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
 
       <div
         className={cn(
-          "grid transition-[grid-template-rows,opacity,transform] duration-300 ease-out",
-          showSheet ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] -translate-y-1 opacity-0",
+          "overflow-hidden transition-[max-height,opacity,transform] duration-300 ease-out",
+          showSheet ? "max-h-[2200px] opacity-100" : "pointer-events-none max-h-0 -translate-y-1 opacity-0",
         )}
         aria-hidden={!showSheet}
       >
-        <div className="min-h-0 overflow-hidden">
+        <div className="rounded-xl border border-primary/20 bg-white p-1 shadow-sm">
           <div className="overflow-x-auto">
-            <Card className="min-w-[21.5rem] overflow-hidden p-0 sm:min-w-0">
+            <Card className="mx-auto min-w-[21.5rem] max-w-full overflow-hidden p-0 sm:min-w-0">
               <div className="grid grid-cols-[2.75rem_repeat(5,minmax(3.25rem,1fr))] border-b border-border bg-primary text-[9px] font-semibold uppercase tracking-wide text-primary-foreground sm:grid-cols-[3rem_repeat(5,minmax(3.5rem,1fr))] sm:text-[11px]">
                 <Cell className="sticky left-0 z-10 bg-primary justify-center">Dia</Cell>
                 <Cell className="justify-center">Ent</Cell>
@@ -305,13 +326,34 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
           </div>
           <DialogFooter>
             <Button variant="outline" type="button" onClick={() => setEditDate(null)}>Cancelar</Button>
-            <Button type="button" onClick={saveEdit}>
+            <Button type="button" onClick={() => setConfirmSaveOpen(true)}>
               <Save className="mr-2 h-4 w-4" />
               Salvar ajuste
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AlertDialog open={confirmSaveOpen} onOpenChange={setConfirmSaveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar ajuste?</AlertDialogTitle>
+            <AlertDialogDescription>
+              As horas do dia selecionado serão atualizadas no relatório e no banco de horas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                setConfirmSaveOpen(false)
+                await saveEdit()
+              }}
+            >
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -367,13 +409,14 @@ function ChartLegend() {
     ["bg-primary/45", "Folga"],
     ["bg-chart-3", "Justificado"],
     ["bg-chart-5", "Feriado"],
+    ["border-chart-3/80", "Média mês"],
   ]
 
   return (
     <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground">
       {items.map(([className, label]) => (
         <span key={label} className="inline-flex items-center gap-1">
-          <span className={cn("h-2 w-2 rounded-full", className)} />
+          <span className={cn(label.startsWith("Média") ? "h-px w-3 border-t border-dashed" : "h-2 w-2 rounded-full", className)} />
           {label}
         </span>
       ))}
