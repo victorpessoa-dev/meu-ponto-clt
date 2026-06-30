@@ -78,7 +78,7 @@ export function AvatarPicker({ value, onChange, label = "Escolha um avatar" }) {
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="touch-target inline-flex items-center justify-center rounded-lg border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+        className="touch-target inline-flex items-center justify-center rounded-lg border border-input bg-background px-3 text-sm font-medium text-foreground transition-all duration-200 ease-out hover:border-primary/25 hover:bg-primary/5 hover:text-primary hover:shadow-sm"
         aria-expanded={open}
       >
         {open ? "Ocultar avatares" : label}

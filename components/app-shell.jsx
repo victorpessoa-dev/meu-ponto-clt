@@ -50,7 +50,6 @@ export function AppShell() {
   const { user, logout } = useAuth()
   const [tab, setTab] = useState("ponto")
   const [reportCursor, setReportCursor] = useState(null)
-  const [showIdentity, setShowIdentity] = useState(true)
 
   if (!user) return null
   const theme = TAB_THEMES[tab] || TAB_THEMES.ponto
@@ -71,42 +70,33 @@ export function AppShell() {
             <span className="truncate text-base font-bold tracking-tight">Meu Ponto CLT</span>
           </div>
           <div className="flex min-w-0 items-center gap-2">
-            {showIdentity && (
-              <div className="hidden min-w-0 text-right sm:block">
-                <p className="truncate text-sm font-semibold leading-tight">{user.name}</p>
-                <p className="truncate text-xs leading-tight text-primary-foreground/75">
-                  {[user.jobTitle, user.companyName].filter(Boolean).join(" • ") || user.email}
-                </p>
-              </div>
-            )}
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              className="touch-target flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15 text-sm font-semibold ring-1 ring-primary-foreground/20 transition-transform duration-200 hover:scale-105"
-              aria-label="Menu do usuário"
-              onClick={() => setShowIdentity((current) => !current)}
-            >
-              <UserAvatar avatarIcon={user.avatarIcon} name={user.name} className="h-8 w-8 bg-primary-foreground/15 text-primary-foreground" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel className="flex flex-col">
-                  <span className="truncate">{user.name}</span>
-                  <span className="truncate text-xs font-normal text-muted-foreground">
-                    {[user.jobTitle, user.companyName].filter(Boolean).join(" • ") || user.email}
-                  </span>
-                </DropdownMenuLabel>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setTab("config")}>
-                <Settings className="mr-2 h-4 w-4" />
-                Meu perfil
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
-                <LogOut className="mr-2 h-4 w-4" />
-                Sair
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className="touch-target flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15 text-sm font-semibold ring-1 ring-primary-foreground/20 transition-transform duration-200 hover:scale-105"
+                aria-label="Menu do usuário"
+              >
+                <UserAvatar avatarIcon={user.avatarIcon} name={user.name} className="h-8 w-8 bg-primary-foreground/15 text-primary-foreground" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className="flex flex-col">
+                    <span className="truncate">{user.name}</span>
+                    <span className="truncate text-xs font-normal text-muted-foreground">
+                      {[user.jobTitle, user.companyName].filter(Boolean).join(" • ") || user.email}
+                    </span>
+                  </DropdownMenuLabel>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setTab("config")}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Meu perfil
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -144,13 +134,13 @@ export function AppShell() {
                   key={key}
                   onClick={() => setTab(key)}
                   className={cn(
-                    "touch-target flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium transition-colors sm:text-xs",
+                    "group/nav touch-target flex flex-col items-center justify-center gap-0.5 rounded-lg py-2 text-[11px] font-medium transition-all duration-200 ease-out hover:bg-primary/5 hover:text-primary hover:shadow-sm sm:text-xs",
                     active ? theme.active : "text-muted-foreground",
                   )}
                   aria-current={active ? "page" : undefined}
                   aria-label={label}
                 >
-                  <Icon className="h-5 w-5 shrink-0" strokeWidth={active ? 2.5 : 2} />
+                  <Icon className="h-5 w-5 shrink-0 transition-transform duration-300 ease-out group-hover/nav:scale-110" strokeWidth={active ? 2.5 : 2} />
                   <span className="truncate">{label}</span>
                 </button>
               )

@@ -126,11 +126,11 @@ export function RegisterScreen() {
                       type="button"
                       onClick={() => (key === "login" ? goToLogin() : setStep("dados"))}
                       className={cn(
-                        "flex h-10 items-center justify-center gap-2 rounded-md text-sm font-medium transition-all duration-200",
+                        "group/step flex h-10 items-center justify-center gap-2 rounded-md text-sm font-medium transition-all duration-200 ease-out hover:shadow-sm",
                         active ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:bg-card/60 hover:text-foreground",
                       )}
                     >
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-4 w-4 transition-transform duration-300 ease-out group-hover/step:scale-110" />
                       {label}
                     </button>
                   )

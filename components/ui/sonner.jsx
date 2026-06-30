@@ -20,11 +20,11 @@ const Toaster = ({ ...props }) => {
                 toast: "cn-toast !z-[9999] !rounded-lg !border !shadow-lg",
                 title: "!text-sm !font-semibold",
                 description: "!text-xs !text-muted-foreground",
-                success: "!border-positive/70 !bg-positive/10 !shadow-positive/10 [&_[data-title]]:!text-positive",
-                info: "!border-primary/70 !bg-primary/10 !shadow-primary/10 [&_[data-title]]:!text-primary",
-                warning: "!border-chart-3/80 !bg-chart-3/10 !shadow-chart-3/10 [&_[data-title]]:!text-chart-3",
-                error: "!border-negative/75 !bg-negative/10 !shadow-negative/10 [&_[data-title]]:!text-negative",
-                loading: "!border-primary/70 !bg-primary/10 !shadow-primary/10 [&_[data-title]]:!text-primary",
+                success: "!border-positive/70 !bg-[color-mix(in_oklch,var(--positive)_12%,var(--background))] !shadow-positive/10 [&_[data-title]]:!text-positive",
+                info: "!border-primary/70 !bg-[color-mix(in_oklch,var(--primary)_12%,var(--background))] !shadow-primary/10 [&_[data-title]]:!text-primary",
+                warning: "!border-chart-3/80 !bg-[color-mix(in_oklch,var(--chart-3)_14%,var(--background))] !shadow-chart-3/10 [&_[data-title]]:!text-chart-3",
+                error: "!border-negative/75 !bg-[color-mix(in_oklch,var(--negative)_12%,var(--background))] !shadow-negative/10 [&_[data-title]]:!text-negative",
+                loading: "!border-primary/70 !bg-[color-mix(in_oklch,var(--primary)_12%,var(--background))] !shadow-primary/10 [&_[data-title]]:!text-primary",
             },
         }} {...props}/>);
 };

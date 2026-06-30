@@ -3,7 +3,13 @@
 import { useEffect, useMemo, useState } from "react"
 import { BarChart3, ChevronLeft, ChevronRight, DoorOpen, LogIn, LogOut, Coffee, Utensils, Check } from "lucide-react"
 import { useAuth, useStoreData } from "@/lib/auth-context"
-import { getJustification, getMonthJustifications, getMonthRecords, getRecord, punch } from "@/lib/store"
+import {
+  getJustification,
+  getMonthJustifications,
+  getMonthRecords,
+  getRecord,
+  punch,
+} from "@/lib/store"
 import {
   activeWorkedMinutes,
   bankMetrics,
@@ -36,6 +42,25 @@ const PUNCH_LABELS = {
 }
 
 const FULL_DAY_KEYS = FIELDS.map((field) => field.key)
+
+function nextAllowedFields(record, configuredKeys) {
+  if (!configuredKeys.includes("entry") || !record?.entry) return configuredKeys.includes("entry") ? ["entry"] : []
+  if (record.breakTime && configuredKeys.includes("returnTime") && !record.returnTime) return ["returnTime"]
+  if (record.returnTime && configuredKeys.includes("exit") && !record.exit) return ["exit"]
+  if (!record.breakTime && !record.exit) {
+    return ["breakTime", "exit"].filter((field) => configuredKeys.includes(field))
+  }
+  return []
+}
+
+function punchOrderMessage(nextFields) {
+  if (nextFields.includes("entry")) return "Comece o dia registrando a entrada."
+  if (nextFields.includes("breakTime") && nextFields.includes("exit")) return "Depois da entrada, registre a pausa ou a saída."
+  if (nextFields.includes("breakTime")) return "Depois da entrada, registre a pausa."
+  if (nextFields.includes("returnTime")) return "Depois da pausa, registre o retorno."
+  if (nextFields.includes("exit")) return "Agora registre a saída."
+  return "Siga a ordem das batidas do dia."
+}
 
 export function PunchView() {
   const { user } = useAuth()
@@ -71,6 +96,7 @@ export function PunchView() {
   const isClosed = metrics.closed
   const configuredKeys = Array.isArray(user?.punchFields?.[dayIndex]) ? user.punchFields[dayIndex] : FULL_DAY_KEYS
   const activeFields = FIELDS.filter((f) => configuredKeys.includes(f.key))
+  const nextFields = nextAllowedFields(record, activeFields.map((field) => field.key))
   const monthChart = useMemo(
     () => buildMonthChart(date, monthRecords, monthJustifications, schedule),
     [date, monthJustifications, monthRecords, schedule],
@@ -88,16 +114,26 @@ export function PunchView() {
 
   async function handlePunch(field) {
     if (!isToday) {
-      toast.info("Só é possível bater ponto no dia de hoje. Para corrigir outro dia, use Ajustes.")
+      toast.info("Só é possível bater ponto no dia de hoje. Para corrigir outro dia, use Relatório.")
       return
     }
     if (record?.[field]) return
-    if (isClosed && ["breakTime", "returnTime"].includes(field)) return
+    if (!activeFields.some((item) => item.key === field)) {
+      toast.info("Esta batida não está configurada para este dia.")
+      return
+    }
+    if (nextFields.length === 0) {
+      toast.info(isClosed ? "O ponto do dia já foi fechado." : "Nenhuma batida disponível para este dia.")
+      return
+    }
+    if (!nextFields.includes(field)) {
+      toast.info(punchOrderMessage(nextFields))
+      return
+    }
     if (field === "returnTime" && !record?.breakTime) {
       toast.info("Registre a pausa antes do retorno.")
       return
     }
-    if (!activeFields.some((item) => item.key === field)) return
     const res = await punch(user.id, field)
     if (res?.error) {
       toast.error(res.error)
@@ -158,43 +194,36 @@ export function PunchView() {
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
         {activeFields.map(({ key, label, icon: Icon, tone }) => {
           const value = record?.[key] ?? null
-          const disabledByClosedDay = isClosed && ["breakTime", "returnTime"].includes(key) && !value
           const needsBreakFirst = key === "returnTime" && !record?.breakTime
-          const canPunch = isToday && !value && !disabledByClosedDay
+          const canPunch = isToday && !value && nextFields.includes(key)
           return (
             <button
               key={key}
               onClick={() => handlePunch(key)}
-              disabled={disabledByClosedDay || (!isToday && !value)}
               className={cn(
-                "relative flex min-h-[7rem] flex-col items-start gap-2 rounded-xl border p-3.5 text-left transition-all active:scale-[0.98] sm:min-h-[7.5rem] sm:gap-3 sm:p-4",
+                "group/punch relative flex min-h-[7rem] flex-col items-start gap-2 rounded-xl border p-3.5 text-left transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40 active:scale-[0.98] sm:min-h-[7.5rem] sm:gap-3 sm:p-4",
                 punchCardClass({ tone, value, canPunch }),
                 !value && !isToday && "opacity-60",
-                disabledByClosedDay && "cursor-not-allowed opacity-55",
               )}
             >
-              {!value && !canPunch && (
-                <span className={cn("pointer-events-none absolute left-3 right-3 top-1/2 h-px", punchStrikeClass(tone))} />
-              )}
               <div className="flex w-full items-center justify-between">
                 <span
                   className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-lg",
+                    "flex h-9 w-9 items-center justify-center rounded-lg transition-transform duration-300 ease-out group-hover/punch:scale-105",
                     punchIconClass({ tone, value, canPunch }),
                   )}
                 >
-                  {value ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
+                  {value ? <Check className="h-5 w-5 transition-transform duration-300 ease-out group-hover/punch:scale-110" /> : <Icon className="h-5 w-5 transition-transform duration-300 ease-out group-hover/punch:scale-110" />}
                 </span>
                 {value && <span className="text-xs font-medium opacity-90">registrado</span>}
                 {!value && canPunch && !needsBreakFirst && <span className={cn("text-xs font-medium", punchTextClass(tone))}>tocar p/ registrar</span>}
-                {!value && disabledByClosedDay && <span className="text-xs font-medium text-muted-foreground">desativado</span>}
-                {!value && needsBreakFirst && !disabledByClosedDay && <span className="text-xs font-medium text-primary">pausa primeiro</span>}
+                {!value && !canPunch && <span className={cn("text-xs font-medium", punchTextClass(tone))}>tocar p/ registrar</span>}
               </div>
               <div>
                 <span
                   className={cn(
                     "text-xs font-medium uppercase tracking-wide",
-                    value ? "text-current/80" : canPunch ? punchTextClass(tone) : punchMutedTextClass(tone),
+                    value ? "text-current/80" : punchTextClass(tone),
                   )}
                 >
                   {label}
@@ -202,8 +231,7 @@ export function PunchView() {
                 <p
                   className={cn(
                     "font-mono text-xl font-bold tabular-nums sm:text-2xl",
-                    value ? "text-current" : canPunch && punchTextClass(tone),
-                    !value && !canPunch && "text-muted-foreground/50",
+                    value ? "text-current" : punchTextClass(tone),
                   )}
                 >
                   {value ?? "--:--"}
@@ -233,7 +261,8 @@ export function PunchView() {
         </p>
       )}
 
-      <MonthOverview chart={monthChart} />
+      <MonthSummaryCards chart={monthChart} />
+      <MonthOverview chart={monthChart} selectedDate={date} />
     </div>
   )
 }
@@ -249,7 +278,8 @@ function buildMonthChart(date, records, justifications, schedule) {
   const days = Array.from({ length: daysInMonth }, (_, index) => {
     const iso = toISODate(new Date(year, month, index + 1))
     const record = recordsByDate.get(iso)
-    const metrics = bankMetrics(iso, record, schedule, justByDate.get(iso))
+    const justification = justByDate.get(iso)
+    const metrics = bankMetrics(iso, record, schedule, justification)
     return {
       iso,
       day: String(index + 1).padStart(2, "0"),
@@ -258,6 +288,8 @@ function buildMonthChart(date, records, justifications, schedule) {
       bankable: metrics.bankable,
       future: iso > today,
       balance: metrics.balance,
+      expected: metrics.expected,
+      just: justification,
     }
   })
 
@@ -276,7 +308,21 @@ function buildMonthChart(date, records, justifications, schedule) {
   }
 }
 
-function MonthOverview({ chart }) {
+function MonthSummaryCards({ chart }) {
+  return (
+    <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <MiniMetric label="Trabalhado" value={minutesToHHMM(chart.totalWorked)} />
+      <MiniMetric label="Dias" value={String(chart.closedCount)} />
+      <MiniMetric
+        label="Banco mensal"
+        value={minutesToHHMM(chart.totalBalance)}
+        tone={chart.totalBalance >= 0 ? "positive" : "negative"}
+      />
+    </div>
+  )
+}
+
+function MonthOverview({ chart, selectedDate }) {
   return (
     <Card className="overflow-hidden p-4 animate-fade-slide">
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -292,25 +338,18 @@ function MonthOverview({ chart }) {
         </span>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-2">
-        <MiniMetric label="Trabalhado" value={minutesToHHMM(chart.totalWorked)} />
-        <MiniMetric
-          label="Banco"
-          value={minutesToHHMM(chart.totalBalance)}
-          tone={chart.totalBalance >= 0 ? "positive" : "negative"}
-        />
-      </div>
-
-      <div className="flex h-32 items-end gap-1 overflow-x-auto pb-1">
+      <div className="flex h-44 items-end gap-1 overflow-x-auto pb-1 sm:h-56">
         {chart.days.map((day) => {
           const workedHeight = `${Math.max(5, (day.worked / chart.maxMinutes) * 100)}%`
+          const active = day.iso === selectedDate || day.iso === todayISO()
           return (
-            <div key={day.iso} className="flex min-w-5 flex-1 flex-col items-center gap-1">
-              <div className="flex h-24 w-full items-end justify-center">
+            <div key={day.iso} className={cn("flex min-w-5 flex-1 flex-col items-center gap-1 rounded-md px-0.5", active && "bg-primary/10")}>
+              <div className="flex h-36 w-full items-end justify-center sm:h-48">
                 <span
                   className={cn(
                     "w-3 rounded-t transition-all duration-500",
-                    !day.bankable ? "bg-muted" : day.balance >= 0 ? "bg-positive" : "bg-negative",
+                    chartBarClass(day),
+                    active && "ring-2 ring-primary ring-offset-1 ring-offset-background",
                     day.future && "opacity-30",
                   )}
                   style={{ height: workedHeight }}
@@ -332,18 +371,37 @@ function MonthOverview({ chart }) {
           <span className="h-2 w-2 rounded-full bg-negative" />
           Negativo
         </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-primary" />
+          Folga
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-chart-5" />
+          Feriado
+        </span>
       </div>
     </Card>
   )
 }
 
+function chartBarClass(day) {
+  if (day.just?.type === "feriado") return "bg-chart-5"
+  if (day.just?.type === "folga" || day.expected === 0) return "bg-primary/45"
+  if (["justificada", "abono", "atestado"].includes(day.just?.type)) return "bg-chart-3"
+  if (day.just?.type === "ferias") return "bg-positive/60"
+  if (day.just?.type === "falta") return "bg-negative"
+  if (!day.bankable) return "bg-muted"
+  return day.balance >= 0 ? "bg-positive" : "bg-negative"
+}
+
 function MiniMetric({ label, value, tone = "default" }) {
   return (
-    <div className="rounded-lg border border-border bg-muted/40 px-3 py-2">
-      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+    <div className="rounded-xl border border-primary/20 bg-white px-2 py-4 shadow-sm transition-all duration-200 ease-out hover:border-primary/35 hover:bg-primary/5 hover:shadow-md sm:px-3 sm:py-5">
+      <span className="block text-center text-[9px] font-medium uppercase tracking-wide text-primary/80 sm:text-[10px]">{label}</span>
       <p
         className={cn(
-          "font-mono text-base font-bold tabular-nums",
+          "mt-1 text-center font-mono text-base font-bold tabular-nums sm:text-lg",
+          tone === "default" && "text-foreground",
           tone === "positive" && "text-positive",
           tone === "negative" && "text-negative",
         )}
@@ -363,14 +421,6 @@ function punchCardClass({ tone, value, canPunch }) {
     return "border-primary bg-primary text-primary-foreground shadow-md"
   }
 
-  const disabled = !canPunch
-  if (disabled) {
-    if (tone === "entry") return "border-positive/30 bg-positive/5 shadow-sm"
-    if (tone === "exit") return "border-negative/30 bg-negative/5 shadow-sm"
-    if (tone === "break") return "border-chart-3/30 bg-chart-3/5 shadow-sm"
-    return "border-primary/30 bg-primary/5 shadow-sm"
-  }
-
   if (tone === "entry") return "border-positive/70 bg-positive/10 shadow-sm"
   if (tone === "exit") return "border-negative/70 bg-negative/10 shadow-sm"
   if (tone === "break") return "border-chart-3/70 bg-chart-3/10 shadow-sm"
@@ -383,11 +433,11 @@ function punchIconClass({ tone, value, canPunch }) {
     return "bg-white/20 text-current"
   }
 
-  if (tone === "entry") return cn("bg-positive/15 text-positive", !canPunch && "bg-positive/5 text-positive/45")
-  if (tone === "exit") return cn("bg-negative/15 text-negative", !canPunch && "bg-negative/5 text-negative/45")
-  if (tone === "break") return cn("bg-chart-3/15 text-chart-3", !canPunch && "bg-chart-3/5 text-chart-3/45")
-  if (tone === "return") return cn("bg-primary/15 text-primary", !canPunch && "bg-primary/5 text-primary/45")
-  return cn("bg-primary/15 text-primary", !canPunch && "bg-primary/5 text-primary/45")
+  if (tone === "entry") return "bg-positive/15 text-positive"
+  if (tone === "exit") return "bg-negative/15 text-negative"
+  if (tone === "break") return "bg-chart-3/15 text-chart-3"
+  if (tone === "return") return "bg-primary/15 text-primary"
+  return "bg-primary/15 text-primary"
 }
 
 function punchTextClass(tone) {
@@ -398,26 +448,10 @@ function punchTextClass(tone) {
   return "text-primary"
 }
 
-function punchMutedTextClass(tone) {
-  if (tone === "entry") return "text-positive/45"
-  if (tone === "exit") return "text-negative/45"
-  if (tone === "break") return "text-chart-3/45"
-  if (tone === "return") return "text-primary/45"
-  return "text-primary/45"
-}
-
-function punchStrikeClass(tone) {
-  if (tone === "entry") return "bg-positive/45"
-  if (tone === "exit") return "bg-negative/45"
-  if (tone === "break") return "bg-chart-3/45"
-  if (tone === "return") return "bg-primary/45"
-  return "bg-primary/45"
-}
-
 function DaySummary({ label, value, tone = "default" }) {
   return (
     <div className="flex flex-col items-center gap-0.5 px-2 py-4">
-      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-center text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">{label}</span>
       <span
         className={cn(
           "font-mono text-lg font-bold tabular-nums",

@@ -19,17 +19,15 @@ import {
 } from "lucide-react"
 import { useAuth, useStoreData } from "@/lib/auth-context"
 import {
-  adjustRecord,
   deleteJustification,
   getJustifications,
-  getRecord,
   getRecords,
   importRecords,
   saveJustification,
   updateUser,
 } from "@/lib/store"
 import { currentTimeWithSeconds, friendlyDate, parseISODate, todayISO, toISODate } from "@/lib/time-utils"
-import { DEFAULT_PUNCH_FIELDS, JUSTIFICATION_LABELS, PUNCH_FIELD_OPTIONS } from "@/lib/types"
+import { DEFAULT_PUNCH_FIELDS, JUSTIFICATION_LABELS } from "@/lib/types"
 import { calculateAge, isAdult } from "@/lib/profile-utils"
 import { normalizeEmail, validateEmail, validateStrongPassword } from "@/lib/security-utils"
 import { recordsToRows, rowsToRecords } from "@/lib/xlsx-utils"
@@ -73,10 +71,9 @@ export function SettingsView({ onImportComplete }) {
 
   return (
     <Tabs defaultValue="perfil" className="flex flex-col gap-4">
-      <TabsList className="grid h-auto w-full grid-cols-4 gap-1 rounded-xl p-1">
+      <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-xl p-1">
         <TabsTrigger value="perfil" className="min-h-10 px-1 py-2 text-xs sm:text-sm">Perfil</TabsTrigger>
         <TabsTrigger value="justificar" className="min-h-10 px-1 py-2 text-xs sm:text-sm">Justificar</TabsTrigger>
-        <TabsTrigger value="ajustar" className="min-h-10 px-1 py-2 text-xs sm:text-sm">Ajustar</TabsTrigger>
         <TabsTrigger value="planilha" className="min-h-10 px-1 py-2 text-xs sm:text-sm">Planilha</TabsTrigger>
       </TabsList>
 
@@ -85,9 +82,6 @@ export function SettingsView({ onImportComplete }) {
       </TabsContent>
       <TabsContent value="justificar" className="animate-fade-slide">
         <JustifySection />
-      </TabsContent>
-      <TabsContent value="ajustar" className="animate-fade-slide">
-        <AdjustSection />
       </TabsContent>
       <TabsContent value="planilha" className="animate-fade-slide">
         <SpreadsheetSection onImportComplete={onImportComplete} />
@@ -284,8 +278,12 @@ function ProfileSection() {
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <Button variant="outline" onClick={logout} className="h-10 text-destructive hover:text-destructive">
+        <div className="flex justify-center">
+          <Button
+            variant="outline"
+            onClick={logout}
+            className="h-10 w-full border-destructive/25 bg-destructive/10 text-destructive transition-all duration-200 ease-out hover:border-destructive/40 hover:bg-destructive/15 hover:text-destructive sm:max-w-xs"
+          >
             <LogOut className="mr-2 h-4 w-4" />
             Sair da conta
           </Button>
@@ -293,7 +291,7 @@ function ProfileSection() {
       </CardContent>
 
       <Dialog open={activeDialog === "profile"} onOpenChange={(open) => !open && setActiveDialog(null)}>
-        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Ajustar perfil</DialogTitle>
             <DialogDescription>Atualize nome, nascimento, empresa, função e avatar.</DialogDescription>
@@ -398,7 +396,7 @@ function ProfileSection() {
       </Dialog>
 
       <Dialog open={activeDialog === "schedule"} onOpenChange={(open) => !open && setActiveDialog(null)}>
-        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Ajustar minha jornada</DialogTitle>
             <DialogDescription>Defina os dias que trabalha e a carga diária.</DialogDescription>
@@ -436,8 +434,8 @@ function ProfileSection() {
                         )
                       }
                       className={cn(
-                        "mb-2 h-7 w-full rounded-md text-xs font-semibold transition-colors",
-                        enabled ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+                        "mb-2 h-7 w-full rounded-md text-xs font-semibold transition-all duration-200 ease-out hover:shadow-sm",
+                        enabled ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary",
                       )}
                     >
                       {day}
@@ -504,7 +502,7 @@ function ProfileSection() {
 
 function SettingsOption({ icon: Icon, title, description, onOpen }) {
   return (
-    <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+    <div className="group rounded-lg border border-primary/20 bg-primary/5 p-3 transition-all duration-200 ease-out hover:border-primary/35 hover:bg-primary/10">
       <div className="flex items-center gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-background text-primary">
           <Icon className="h-5 w-5" />
@@ -513,8 +511,15 @@ function SettingsOption({ icon: Icon, title, description, onOpen }) {
           <p className="text-sm font-semibold text-primary">{title}</p>
           <p className="truncate text-xs text-muted-foreground">{description}</p>
         </div>
-        <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={onOpen} aria-label={`Abrir ${title}`}>
-          <Cog className="h-5 w-5" />
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-10 w-10 shrink-0 border-primary/25 bg-background text-primary transition-all duration-200 ease-out hover:border-primary/50 hover:bg-primary/10 hover:text-primary hover:shadow-sm"
+          onClick={onOpen}
+          aria-label={`Abrir ${title}`}
+        >
+          <Cog className="h-5 w-5 transition-transform duration-300 ease-out group-hover:rotate-45" />
         </Button>
       </div>
     </div>
@@ -529,11 +534,25 @@ function ClockAdjust({ label, step, value, onChange }) {
   return (
     <div className="rounded-lg border border-primary/20 bg-background p-2">
       <p className="mb-2 text-center text-xs font-medium text-muted-foreground">{label}</p>
-      <div className="grid grid-cols-2 gap-2">
-        <Button type="button" variant="outline" size="icon" onClick={() => adjust(-step)} aria-label={`Atrasar ${label.toLowerCase()}`}>
+      <div className="flex items-center justify-center gap-10 sm:gap-8">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-9 w-9 border-negative/25 bg-negative/10 text-negative hover:border-negative/35 hover:bg-negative/15 hover:text-negative"
+          onClick={() => adjust(-step)}
+          aria-label={`Atrasar ${label.toLowerCase()}`}
+        >
           <Minus className="h-4 w-4" />
         </Button>
-        <Button type="button" variant="outline" size="icon" onClick={() => adjust(step)} aria-label={`Adiantar ${label.toLowerCase()}`}>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-9 w-9 border-positive/25 bg-positive/10 text-positive hover:border-positive/35 hover:bg-positive/15 hover:text-positive"
+          onClick={() => adjust(step)}
+          aria-label={`Adiantar ${label.toLowerCase()}`}
+        >
           <Plus className="h-4 w-4" />
         </Button>
       </div>
@@ -716,105 +735,6 @@ function JustifySection() {
         </Card>
       )}
     </div>
-  )
-}
-
-function AdjustSection() {
-  const { user } = useAuth()
-  const [date, setDate] = useState(todayISO())
-
-  const record = useStoreData(() => (date ? getRecord(user.id, date) : undefined))
-
-  const [values, setValues] = useState({ entry: "", breakTime: "", returnTime: "", exit: "" })
-  const [loadedDate, setLoadedDate] = useState("")
-
-  useEffect(() => {
-    if (loadedDate === date) return
-
-    setLoadedDate(date)
-    setValues({
-      entry: record?.entry ?? "",
-      breakTime: record?.breakTime ?? "",
-      returnTime: record?.returnTime ?? "",
-      exit: record?.exit ?? "",
-    })
-  }, [date, loadedDate, record])
-
-  const dayIndex = date ? parseISODate(date).getDay() : -1
-  const configuredKeys = Array.isArray(user.punchFields?.[dayIndex])
-    ? user.punchFields[dayIndex]
-    : PUNCH_FIELD_OPTIONS.map((field) => field.key)
-  const fields = PUNCH_FIELD_OPTIONS.filter((field) => configuredKeys.includes(field.key))
-
-  async function save() {
-    if (!date) {
-      toast.error("Selecione a data do ajuste.")
-      return
-    }
-
-    const payload = fields.reduce((acc, field) => {
-      acc[field.key] = values[field.key]
-      return acc
-    }, {})
-
-    const entry = payload.entry
-    const breakTime = payload.breakTime
-    const returnTime = payload.returnTime
-    const exit = payload.exit
-
-    if (returnTime && !breakTime) {
-      toast.error("Informe a pausa antes do retorno.")
-      return
-    }
-    if (breakTime && returnTime && returnTime <= breakTime) {
-      toast.error("O retorno deve ser depois da pausa.")
-      return
-    }
-    if (entry && exit && exit <= entry) {
-      toast.error("A saída deve ser depois da entrada.")
-      return
-    }
-
-    const res = await adjustRecord(user.id, date, payload)
-    if (res?.error) {
-      toast.error(res.error)
-      return
-    }
-    toast.success("Ponto ajustado.")
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Ajustar ponto de um dia</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4 px-4 py-4 sm:px-5">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="adj-date">Data</Label>
-          <Input id="adj-date" type="date" value={date} max={todayISO()} onChange={(e) => setDate(e.target.value)} />
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {fields.map(({ key, label }) => (
-            <div key={key} className="flex flex-col gap-2">
-              <Label htmlFor={`adj-${key}`}>{label}</Label>
-              <Input
-                id={`adj-${key}`}
-                type="time"
-                value={values[key]}
-                onChange={(e) => setValues((v) => ({ ...v, [key]: e.target.value }))}
-              />
-            </div>
-          ))}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {fields.length === 0 ? "Nenhuma batida configurada para este dia." : "Deixe um campo vazio para apaga-lo."}
-        </p>
-        <Button onClick={save} disabled={fields.length === 0}>
-          <Save className="mr-2 h-4 w-4" />
-          Salvar ajuste
-        </Button>
-      </CardContent>
-    </Card>
   )
 }
 

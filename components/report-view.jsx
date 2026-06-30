@@ -1,14 +1,15 @@
 ﻿"use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { BarChart3, ChevronLeft, ChevronRight, EyeOff, Table2 } from "lucide-react"
+import { BarChart3, ChevronLeft, ChevronRight, EyeOff, Save, Table2 } from "lucide-react"
 import { useAuth, useStoreData } from "@/lib/auth-context"
-import { getMonthJustifications, getMonthRecords } from "@/lib/store"
+import { adjustRecord, getJustifications, getMonthJustifications, getMonthRecords, getRecords } from "@/lib/store"
 import {
   bankMetrics,
   minutesToHHMM,
   monthName,
   scheduleSummary,
+  todayISO,
   toISODate,
   weekdayShort,
 } from "@/lib/time-utils"
@@ -16,12 +17,18 @@ import { JUSTIFICATION_LABELS } from "@/lib/types"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { toast } from "sonner"
 
 export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
   const { user } = useAuth()
   const now = new Date()
   const [cursor, setCursor] = useState({ year: now.getFullYear(), month: now.getMonth() })
   const [showSheet, setShowSheet] = useState(true)
+  const [editDate, setEditDate] = useState(null)
+  const [editValues, setEditValues] = useState({ entry: "", breakTime: "", returnTime: "", exit: "" })
 
   useEffect(() => {
     if (!cursorOverride) return
@@ -33,9 +40,13 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
   const justifications = useStoreData(() =>
     user ? getMonthJustifications(user.id, cursor.year, cursor.month) : [],
   )
+  const allRecords = useStoreData(() => (user ? getRecords().filter((item) => item.userId === user.id) : []))
+  const allJustifications = useStoreData(() =>
+    user ? getJustifications().filter((item) => item.userId === user.id) : [],
+  )
   const schedule = user?.schedule ?? []
 
-  const { dayMetrics, maxChartMinutes, totalWorked, totalBalance, workedDays } = useMemo(() => {
+  const { dayMetrics, maxChartMinutes } = useMemo(() => {
     const recordsByDate = new Map(records.map((record) => [record.date, record]))
     const justByDate = new Map(justifications.map((justification) => [justification.date, justification]))
     const daysInMonth = new Date(cursor.year, cursor.month + 1, 0).getDate()
@@ -43,30 +54,65 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
       const iso = toISODate(new Date(cursor.year, cursor.month, index + 1))
       const rec = recordsByDate.get(iso)
       const just = justByDate.get(iso)
+      const metrics = bankMetrics(iso, rec, schedule, just)
       return {
         iso,
         rec,
         just,
-        ...bankMetrics(iso, rec, schedule, just),
+        ...metrics,
         weekend: [0, 6].includes(new Date(iso + "T00:00:00").getDay()),
       }
     })
 
-    return metrics.reduce(
-      (acc, day) => {
-        acc.maxChartMinutes = Math.max(acc.maxChartMinutes, day.worked)
-        if (day.bankable) {
-          acc.totalWorked += day.worked
-          acc.totalBalance += day.balance
-          acc.workedDays += 1
-        }
-        return acc
-      },
-      { dayMetrics: metrics, maxChartMinutes: 60, totalWorked: 0, totalBalance: 0, workedDays: 0 },
-    )
+    return {
+      dayMetrics: metrics,
+      maxChartMinutes: Math.max(60, ...metrics.map((day) => day.worked)),
+    }
   }, [cursor.month, cursor.year, justifications, records, schedule])
 
+  const totalSummary = useMemo(
+    () => buildTotalSummary(allRecords, allJustifications, schedule),
+    [allJustifications, allRecords, schedule],
+  )
+
   if (!user) return null
+
+  const editDay = dayMetrics.find((day) => day.iso === editDate)
+
+  function openEdit(day) {
+    setEditDate(day.iso)
+    setEditValues({
+      entry: day.rec?.entry ?? "",
+      breakTime: day.rec?.breakTime ?? "",
+      returnTime: day.rec?.returnTime ?? "",
+      exit: day.rec?.exit ?? "",
+    })
+  }
+
+  async function saveEdit() {
+    if (!editDate) return
+
+    if (editValues.returnTime && !editValues.breakTime) {
+      toast.error("Informe a pausa antes do retorno.")
+      return
+    }
+    if (editValues.breakTime && editValues.returnTime && editValues.returnTime <= editValues.breakTime) {
+      toast.error("O retorno deve ser depois da pausa.")
+      return
+    }
+    if (editValues.entry && editValues.exit && editValues.exit <= editValues.entry) {
+      toast.error("A saída deve ser depois da entrada.")
+      return
+    }
+
+    const res = await adjustRecord(user.id, editDate, editValues)
+    if (res?.error) {
+      toast.error(res.error)
+      return
+    }
+    toast.success("Ponto ajustado.")
+    setEditDate(null)
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -89,12 +135,12 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
       </div>
 
       <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <SummaryCard label="Trabalhado" value={minutesToHHMM(totalWorked)} />
-        <SummaryCard label="Dias" value={String(workedDays)} />
+        <SummaryCard label="Trabalhado" value={minutesToHHMM(totalSummary.worked)} />
+        <SummaryCard label="Dias" value={String(totalSummary.days)} />
         <SummaryCard
-          label="Banco"
-          value={minutesToHHMM(totalBalance)}
-          tone={totalBalance >= 0 ? "positive" : "negative"}
+          label="Banco total"
+          value={minutesToHHMM(totalSummary.balance)}
+          tone={totalSummary.balance >= 0 ? "positive" : "negative"}
         />
       </div>
 
@@ -109,94 +155,163 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
         <div className="flex h-40 items-end gap-1 overflow-x-auto pb-1 sm:h-48 sm:gap-1.5">
           {dayMetrics.map((day) => {
             const workedHeight = `${Math.max(4, (day.worked / maxChartMinutes) * 100)}%`
+            const focused = day.iso === editDate || day.iso === todayISO()
             return (
-              <div key={day.iso} className="flex min-w-6 flex-1 flex-col items-center gap-1">
+              <button
+                key={day.iso}
+                type="button"
+                onClick={() => openEdit(day)}
+                className={cn(
+                  "group/day flex min-w-6 flex-1 flex-col items-center gap-1 rounded-md px-0.5 outline-none transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-primary/5 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-ring/60",
+                  focused && "bg-primary/10",
+                )}
+                aria-label={`Editar dia ${day.iso.split("-")[2]}`}
+              >
                 <div className="flex h-32 w-full items-end justify-center sm:h-40">
                   <span
                     className={cn(
-                      "w-3 rounded-t transition-all duration-500 ease-out",
-                      !day.bankable ? "bg-muted" : day.balance >= 0 ? "bg-positive" : "bg-negative",
+                      "w-3 origin-bottom rounded-t transition-all duration-500 ease-out group-hover/day:scale-y-105",
+                      chartBarClass(day),
+                      focused && "ring-2 ring-primary ring-offset-1 ring-offset-background",
                     )}
                     style={{ height: workedHeight }}
-                    title={day.bankable ? `Trabalhado ${minutesToHHMM(day.worked)}` : "Sem banco"}
+                    title={dayTitle(day)}
                   />
                 </div>
                 <span className="text-[10px] text-muted-foreground">{day.iso.split("-")[2]}</span>
-              </div>
+              </button>
             )
           })}
         </div>
+        <ChartLegend />
       </Card>
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-center text-xs text-primary">
+        Para ajustar entrada, pausa, retorno ou saída, clique em um dia do gráfico ou em uma linha da planilha.
+      </div>
+
+      <div className="grid grid-cols-[1fr_auto] items-center gap-2 sm:gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <Table2 className="h-4 w-4 shrink-0 text-primary" />
           <span className="truncate text-sm font-semibold text-foreground">Planilha de horas</span>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setShowSheet((current) => !current)}>
-          {showSheet ? <EyeOff className="mr-1.5 h-4 w-4" /> : <Table2 className="mr-1.5 h-4 w-4" />}
-          {showSheet ? "Suspender" : "Exibir"}
-        </Button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Button variant="outline" className="h-10 px-3 text-xs sm:text-sm" onClick={() => setShowSheet((current) => !current)}>
+            {showSheet ? <EyeOff className="mr-1.5 h-4 w-4" /> : <Table2 className="mr-1.5 h-4 w-4" />}
+            {showSheet ? "Suspender" : "Exibir"}
+          </Button>
+        </div>
       </div>
 
-      {showSheet && (
-      <div className="animate-fade-slide overflow-x-auto">
-        <Card className="min-w-[24rem] overflow-hidden p-0 sm:min-w-0">
-          <div className="grid grid-cols-[3rem_repeat(5,minmax(3.5rem,1fr))] border-b border-border bg-primary text-[9px] font-semibold uppercase tracking-wide text-primary-foreground sm:text-[11px]">
-            <Cell className="sticky left-0 z-10 bg-primary justify-center">Dia</Cell>
-            <Cell className="justify-center">Ent</Cell>
-            <Cell className="justify-center">Pausa</Cell>
-            <Cell className="justify-center">Retor</Cell>
-            <Cell className="justify-center">Saída</Cell>
-            <Cell className="justify-center">Saldo</Cell>
-          </div>
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows,opacity,transform] duration-300 ease-out",
+          showSheet ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] -translate-y-1 opacity-0",
+        )}
+        aria-hidden={!showSheet}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="overflow-x-auto">
+            <Card className="min-w-[21.5rem] overflow-hidden p-0 sm:min-w-0">
+              <div className="grid grid-cols-[2.75rem_repeat(5,minmax(3.25rem,1fr))] border-b border-border bg-primary text-[9px] font-semibold uppercase tracking-wide text-primary-foreground sm:grid-cols-[3rem_repeat(5,minmax(3.5rem,1fr))] sm:text-[11px]">
+                <Cell className="sticky left-0 z-10 bg-primary justify-center">Dia</Cell>
+                <Cell className="justify-center">Ent</Cell>
+                <Cell className="justify-center">Pausa</Cell>
+                <Cell className="justify-center">Retor</Cell>
+                <Cell className="justify-center">Saída</Cell>
+                <Cell className="justify-center">Saldo</Cell>
+              </div>
 
-          <div className="divide-y divide-border">
-            {dayMetrics.map(({ iso, rec, just, hasPunch, bankable, balance, weekend, expected }) => {
-              return (
-                <div
-                  key={iso}
-                  className={cn(
-                    "grid grid-cols-[3rem_repeat(5,minmax(3.5rem,1fr))] items-center text-sm",
-                    weekend && "bg-muted/40",
-                    rowToneClass({ expected, just }),
-                  )}
-                >
-                  <div className="sticky left-0 z-10 flex flex-col items-center bg-inherit px-2 py-2 leading-tight">
-                    <span className="text-xs font-bold text-foreground">{iso.split("-")[2]}</span>
-                    <span className="text-[9px] capitalize text-muted-foreground sm:text-[10px]">{weekdayShort(iso)}</span>
-                  </div>
-
-                  {!hasPunch && just ? (
-                    <>
-                      <div className="col-span-4 px-2 py-2 sm:px-3">
-                        <span className="inline-block max-w-full truncate rounded bg-accent px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground sm:px-2 sm:text-xs">
-                          {JUSTIFICATION_LABELS[just.type]}
-                          {just.startTime && just.endTime ? ` ${just.startTime}-${just.endTime}` : ""}
-                        </span>
+              <div className="divide-y divide-border">
+                {dayMetrics.map((day) => {
+                  const { iso, rec, just, hasPunch, bankable, balance, weekend, expected } = day
+                  const onlyStatus = !hasPunch && (just || expected === 0)
+                  return (
+                    <div
+                      key={iso}
+                      role="button"
+                      tabIndex={showSheet ? 0 : -1}
+                      onClick={() => openEdit(day)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") openEdit(day)
+                      }}
+                      className={cn(
+                        "grid cursor-pointer grid-cols-[2.75rem_repeat(5,minmax(3.25rem,1fr))] items-center text-sm transition-all duration-200 ease-out hover:bg-primary/5 hover:shadow-sm focus-visible:bg-primary/5 focus-visible:outline-none sm:grid-cols-[3rem_repeat(5,minmax(3.5rem,1fr))]",
+                        weekend && "bg-muted/40",
+                        rowToneClass({ expected, just }),
+                        iso === editDate && "ring-2 ring-primary/40",
+                      )}
+                    >
+                      <div className="sticky left-0 z-10 flex flex-col items-center bg-inherit px-1.5 py-2 leading-tight sm:px-2">
+                        <span className="text-xs font-bold text-foreground">{iso.split("-")[2]}</span>
+                        <span className="text-[9px] capitalize text-muted-foreground sm:text-[10px]">{weekdayShort(iso)}</span>
                       </div>
-                      <BalanceCell bankable={bankable} balance={balance} />
-                    </>
-                  ) : (
-                    <>
-                      <TimeCell value={rec?.entry} tone="entry" />
-                      <TimeCell value={rec?.breakTime} />
-                      <TimeCell value={rec?.returnTime} />
-                      <TimeCell value={rec?.exit} tone="exit" />
-                      <BalanceCell bankable={bankable} balance={balance} />
-                    </>
-                  )}
-                </div>
-              )
-            })}
+
+                      {onlyStatus ? (
+                        <>
+                          <div className="col-span-4 px-2 py-2 sm:px-3">
+                            <span className={cn("inline-block max-w-full truncate rounded px-1.5 py-0.5 text-[10px] font-medium sm:px-2 sm:text-xs", statusPillClass({ expected, just }))}>
+                              {just ? JUSTIFICATION_LABELS[just.type] : "Folga"}
+                              {just?.startTime && just?.endTime ? ` ${just.startTime}-${just.endTime}` : ""}
+                            </span>
+                          </div>
+                          <BalanceCell bankable={bankable} balance={balance} />
+                        </>
+                      ) : (
+                        <>
+                          <TimeCell value={rec?.entry} tone="entry" />
+                          <TimeCell value={rec?.breakTime} />
+                          <TimeCell value={rec?.returnTime} />
+                          <TimeCell value={rec?.exit} tone="exit" />
+                          <BalanceCell bankable={bankable} balance={balance} />
+                        </>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </Card>
           </div>
-        </Card>
+        </div>
       </div>
-      )}
 
       <p className="px-1 text-center text-xs text-muted-foreground">
-        O banco soma dias fechados, faltas e abonos. Férias, folgas, atestados e faltas justificadas não entram no saldo. Jornada: {scheduleSummary(user.schedule)}.
+        O banco mensal soma dias fechados, faltas e abonos. Férias, folgas, feriados, atestados e faltas justificadas não entram no saldo. Jornada: {scheduleSummary(user.schedule)}.
       </p>
+
+      <Dialog open={!!editDate} onOpenChange={(open) => !open && setEditDate(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Ajustar horas do dia</DialogTitle>
+            <DialogDescription>{editDay ? `${weekdayShort(editDay.iso)}, ${editDay.iso.split("-")[2]}/${editDay.iso.split("-")[1]}` : ""}</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {[
+              ["entry", "Entrada"],
+              ["breakTime", "Pausa"],
+              ["returnTime", "Retorno"],
+              ["exit", "Saída"],
+            ].map(([key, label]) => (
+              <div key={key} className="flex flex-col gap-2">
+                <Label htmlFor={`report-${key}`}>{label}</Label>
+                <Input
+                  id={`report-${key}`}
+                  type="time"
+                  value={editValues[key]}
+                  onChange={(event) => setEditValues((current) => ({ ...current, [key]: event.target.value }))}
+                />
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" type="button" onClick={() => setEditDate(null)}>Cancelar</Button>
+            <Button type="button" onClick={saveEdit}>
+              <Save className="mr-2 h-4 w-4" />
+              Salvar ajuste
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -206,7 +321,7 @@ function CalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onShift,
 
   return (
     <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
-      <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0" onClick={() => onShift(-1)} aria-label={`${ariaLabel} anterior`}>
+      <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => onShift(-1)} aria-label={`${ariaLabel} anterior`}>
         <ChevronLeft className="h-5 w-5" />
       </Button>
       <div className="relative h-16 min-w-0 overflow-hidden rounded-lg bg-primary/5" role="tablist" aria-label={ariaLabel}>
@@ -238,20 +353,76 @@ function CalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onShift,
           })}
         </div>
       </div>
-      <Button type="button" variant="outline" size="icon" className="h-11 w-11 shrink-0" onClick={() => onShift(1)} aria-label={`Próximo ${ariaLabel}`}>
+      <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => onShift(1)} aria-label={`Próximo ${ariaLabel}`}>
         <ChevronRight className="h-5 w-5" />
       </Button>
     </div>
   )
 }
 
+function ChartLegend() {
+  const items = [
+    ["bg-positive", "Positivo"],
+    ["bg-negative", "Negativo"],
+    ["bg-primary/45", "Folga"],
+    ["bg-chart-3", "Justificado"],
+    ["bg-chart-5", "Feriado"],
+  ]
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground">
+      {items.map(([className, label]) => (
+        <span key={label} className="inline-flex items-center gap-1">
+          <span className={cn("h-2 w-2 rounded-full", className)} />
+          {label}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function buildTotalSummary(records, justifications, schedule) {
+  const recordsByDate = new Map(records.map((record) => [record.date, record]))
+  const justByDate = new Map(justifications.map((justification) => [justification.date, justification]))
+  const dates = new Set([...recordsByDate.keys(), ...justByDate.keys()])
+
+  return Array.from(dates).reduce(
+    (acc, iso) => {
+      const metrics = bankMetrics(iso, recordsByDate.get(iso), schedule, justByDate.get(iso))
+      if (metrics.bankable) {
+        acc.worked += metrics.worked
+        acc.balance += metrics.balance
+        acc.days += 1
+      }
+      return acc
+    },
+    { worked: 0, balance: 0, days: 0 },
+  )
+}
+
+function chartBarClass(day) {
+  if (day.just?.type === "feriado") return "bg-chart-5"
+  if (day.just?.type === "folga" || day.expected === 0) return "bg-primary/45"
+  if (["justificada", "abono", "atestado"].includes(day.just?.type)) return "bg-chart-3"
+  if (day.just?.type === "ferias") return "bg-positive/60"
+  if (day.just?.type === "falta") return "bg-negative"
+  if (!day.bankable) return "bg-muted"
+  return day.balance >= 0 ? "bg-positive" : "bg-negative"
+}
+
+function dayTitle(day) {
+  if (day.just?.type) return JUSTIFICATION_LABELS[day.just.type] || "Justificativa"
+  if (day.expected === 0) return "Folga"
+  return day.bankable ? `Trabalhado ${minutesToHHMM(day.worked)}` : "Sem banco"
+}
+
 function Cell({ children, className }) {
-  return <div className={cn("flex items-center px-2 py-2", className)}>{children}</div>
+  return <div className={cn("flex items-center px-1.5 py-2 sm:px-2", className)}>{children}</div>
 }
 
 function TimeCell({ value, tone, className }) {
   return (
-    <div className={cn("flex items-center justify-center px-2 py-2 font-mono text-xs tabular-nums", className)}>
+    <div className={cn("flex items-center justify-center px-1.5 py-2 font-mono text-[11px] tabular-nums sm:px-2 sm:text-xs", className)}>
       {value ? (
         <span
           className={cn(
@@ -272,7 +443,7 @@ function TimeCell({ value, tone, className }) {
 
 function BalanceCell({ bankable, balance }) {
   return (
-    <div className="flex items-center justify-center px-2 py-2 font-mono text-[10px] font-bold tabular-nums sm:text-xs">
+    <div className="flex items-center justify-center px-1.5 py-2 font-mono text-[10px] font-bold tabular-nums sm:px-2 sm:text-xs">
       {!bankable ? (
         <span className="text-muted-foreground/40">-</span>
       ) : (
@@ -284,16 +455,25 @@ function BalanceCell({ bankable, balance }) {
 
 function rowToneClass({ expected, just }) {
   if (just?.type === "ferias") return "bg-positive/10"
+  if (just?.type === "feriado") return "bg-chart-5/15"
   if (just?.type === "falta") return "bg-negative/10"
   if (["abono", "atestado", "justificada"].includes(just?.type)) return "bg-chart-3/15"
   if (just?.type === "folga" || expected === 0) return "bg-primary/10"
   return ""
 }
 
+function statusPillClass({ expected, just }) {
+  if (just?.type === "feriado") return "bg-chart-5/15 text-chart-5"
+  if (just?.type === "folga" || expected === 0) return "bg-primary/10 text-primary"
+  if (just?.type === "ferias") return "bg-positive/10 text-positive"
+  if (just?.type === "falta") return "bg-negative/10 text-negative"
+  return "bg-chart-3/15 text-chart-3"
+}
+
 function SummaryCard({ label, value, tone = "default" }) {
   return (
     <Card className="flex flex-col items-center gap-1 p-3 sm:p-4">
-      <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:text-[11px]">{label}</span>
+      <span className="text-center text-[9px] font-medium uppercase tracking-wide text-muted-foreground sm:text-[11px]">{label}</span>
       <span
         className={cn(
           "font-mono text-sm font-bold tabular-nums sm:text-base",

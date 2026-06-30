@@ -1,5 +1,8 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+DROP TABLE IF EXISTS public.errors;
+DROP TABLE IF EXISTS public.logs;
+
 CREATE TABLE IF NOT EXISTS users (
   id uuid PRIMARY KEY,
   email text NOT NULL UNIQUE,
@@ -246,30 +249,4 @@ CREATE POLICY "authenticated_update_justifications" ON justifications FOR UPDATE
 
 DROP POLICY IF EXISTS "authenticated_delete_justifications" ON justifications;
 CREATE POLICY "authenticated_delete_justifications" ON justifications FOR DELETE
-  TO authenticated USING ((auth.uid() = user_id AND public.is_active_user()) OR public.is_admin_user());
-
-CREATE TABLE IF NOT EXISTS logs (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES users(id) ON DELETE SET NULL,
-  level text NOT NULL DEFAULT 'info',
-  category text NOT NULL DEFAULT 'app',
-  message text NOT NULL,
-  metadata jsonb,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_logs_user_id ON logs(user_id);
-CREATE INDEX IF NOT EXISTS idx_logs_created_at ON logs(created_at);
-
-ALTER TABLE logs ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "public_insert_logs" ON logs;
-CREATE POLICY "public_insert_logs" ON logs FOR INSERT TO public WITH CHECK (user_id IS NULL);
-
-DROP POLICY IF EXISTS "authenticated_insert_logs" ON logs;
-CREATE POLICY "authenticated_insert_logs" ON logs FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id AND public.is_active_user());
-
-DROP POLICY IF EXISTS "authenticated_select_logs" ON logs;
-CREATE POLICY "authenticated_select_logs" ON logs FOR SELECT
   TO authenticated USING ((auth.uid() = user_id AND public.is_active_user()) OR public.is_admin_user());

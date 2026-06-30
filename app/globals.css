@@ -129,6 +129,10 @@
     @apply bg-background text-foreground;
     -webkit-tap-highlight-color: transparent;
   }
+  [data-sonner-toaster],
+  .toaster {
+    z-index: 2147483647 !important;
+  }
   html {
     @apply font-sans;
   }
