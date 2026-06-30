@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabase"
 import { getPasswordChecks, validateStrongPassword } from "@/lib/security-utils"
 import { updateAccountPassword } from "@/lib/store"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { PasswordField } from "@/components/password-field"
@@ -115,9 +115,9 @@ export function PasswordResetScreen() {
                 <p className="text-sm leading-6 text-muted-foreground">
                   Sua senha foi atualizada. Voce sera redirecionado para o login.
                 </p>
-                <Button asChild className="h-11 w-full">
-                  <Link href="/login">Ir para login</Link>
-                </Button>
+                <Link href="/login" className={cn(buttonVariants(), "h-11 w-full")}>
+                  Ir para login
+                </Link>
               </div>
             )}
 
@@ -182,9 +182,9 @@ export function PasswordResetScreen() {
                 <p className="rounded-md border border-chart-3/30 bg-chart-3/10 px-3 py-2 text-sm text-chart-3" role="alert">
                   {error || "Link invalido ou expirado."}
                 </p>
-                <Button asChild className="h-11 w-full">
-                  <Link href="/login">Voltar ao login</Link>
-                </Button>
+                <Link href="/login" className={cn(buttonVariants(), "h-11 w-full")}>
+                  Voltar ao login
+                </Link>
               </div>
             )}
           </CardContent>

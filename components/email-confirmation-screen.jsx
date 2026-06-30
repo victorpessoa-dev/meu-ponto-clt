@@ -5,8 +5,9 @@ import { CheckCircle2, Clock, MailCheck, TriangleAlert } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
 
 export function EmailConfirmationScreen() {
   const router = useRouter()
@@ -100,9 +101,9 @@ export function EmailConfirmationScreen() {
               </p>
             )}
 
-            <Button asChild className="h-11 w-full">
-              <Link href="/login">Ir para login</Link>
-            </Button>
+            <Link href="/login" className={cn(buttonVariants(), "h-11 w-full")}>
+              Ir para login
+            </Link>
           </CardContent>
         </Card>
       </div>

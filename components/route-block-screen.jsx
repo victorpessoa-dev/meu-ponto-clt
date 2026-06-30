@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Clock, LockKeyhole, SearchX } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 const COPY = {
   restricted: {
@@ -38,16 +39,21 @@ export function RouteBlockScreen({ type = "restricted" }) {
         <p className="mt-2 text-sm leading-6 text-primary-foreground/75">{copy.description}</p>
 
         <div className="mt-6 rounded-xl border border-primary-foreground/15 bg-primary-foreground/10 p-3 shadow-xl backdrop-blur">
-          <Button asChild className="h-11 w-full bg-primary-foreground text-primary hover:bg-primary-foreground/90">
-            <Link href={copy.primaryHref}>{copy.primaryLabel}</Link>
-          </Button>
-          <Button
-            asChild
-            variant="ghost"
-            className="mt-2 h-10 w-full text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+          <Link
+            href={copy.primaryHref}
+            className={cn(buttonVariants(), "h-11 w-full bg-primary-foreground text-primary hover:bg-primary-foreground/90")}
           >
-            <Link href={copy.secondaryHref}>{copy.secondaryLabel}</Link>
-          </Button>
+            {copy.primaryLabel}
+          </Link>
+          <Link
+            href={copy.secondaryHref}
+            className={cn(
+              buttonVariants({ variant: "ghost" }),
+              "mt-2 h-10 w-full text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground",
+            )}
+          >
+            {copy.secondaryLabel}
+          </Link>
         </div>
       </div>
     </main>
