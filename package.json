@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "test": "node --experimental-default-type=module tests/run-tests.js",
+    "ci": "npm test && npm run build",
     "build": "next build",
     "start": "next start"
   },
