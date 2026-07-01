@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
-import { validateStrongPassword } from "@/lib/auth-utils"
-import { getSupabaseAdmin } from "@/lib/supabase-admin"
+import { validateStrongPassword } from "@/lib/auth/auth-utils"
+import { getSupabaseAdmin } from "@/lib/supabase/supabase-admin"
 
 export const runtime = "nodejs"
 

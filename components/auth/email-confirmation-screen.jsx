@@ -4,10 +4,10 @@ import { useEffect, useState } from "react"
 import { CheckCircle2, Clock, MailCheck, TriangleAlert } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase/supabase"
 import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils/utils"
 
 const PAGE_ACTIVE_LIMIT_MS = 10 * 60 * 1000
 const MAX_LINK_ATTEMPTS = 3

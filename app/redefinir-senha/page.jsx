@@ -1,5 +1,5 @@
 import { Suspense } from "react"
-import { PasswordResetScreen } from "@/components/password-reset-screen"
+import { PasswordResetScreen } from "@/components/auth/password-reset-screen"
 
 export const metadata = {
   title: "Redefinir senha",

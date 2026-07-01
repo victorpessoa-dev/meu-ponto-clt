@@ -1,4 +1,4 @@
-import { OfflineScreen } from "@/components/offline-screen"
+import { OfflineScreen } from "@/components/app/offline-screen"
 
 export const metadata = {
   title: "Sem conexão",

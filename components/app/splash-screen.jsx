@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils/utils"
 
 export function SplashScreen({ fixed = false, leaving = false }) {
   const Wrapper = fixed ? "div" : "main"

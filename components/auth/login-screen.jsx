@@ -1,14 +1,14 @@
-﻿"use client"
+"use client"
 
 import { useState } from "react"
 import { Clock, MailCheck } from "lucide-react"
 import Link from "next/link"
-import { useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/auth/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
-import { PasswordField } from "@/components/password-field"
+import { PasswordField } from "@/components/auth/password-field"
 
 const MAX_LOGIN_ATTEMPTS = 5
 const MAX_RESET_REQUESTS = 3

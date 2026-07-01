@@ -1,5 +1,5 @@
-import { AuthProvider } from "@/lib/auth-context"
-import { AuthLoginRoute } from "@/components/auth-login-route"
+import { AuthProvider } from "@/lib/auth/auth-context"
+import { AuthLoginRoute } from "@/components/auth/auth-login-route"
 
 export const metadata = {
   title: "Login",

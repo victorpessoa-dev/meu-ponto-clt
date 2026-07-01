@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useCallback, useContext, useEffect, useSyncExternalStore } from "react"
-import { supabase } from "./supabase"
+import { supabase } from "@/lib/supabase/supabase"
 import {
   getCurrentUser,
   getStoreVersion,
@@ -13,7 +13,7 @@ import {
   requestPasswordReset as storeRequestPasswordReset,
   refreshStore,
   subscribe,
-} from "./store"
+} from "@/lib/data/store"
 
 const AuthContext = createContext(null)
 

@@ -175,6 +175,30 @@
     text-rendering: geometricPrecision;
     background: linear-gradient(180deg, color-mix(in oklch, var(--background) 94%, white), var(--background));
   }
+  html {
+    scrollbar-gutter: stable;
+  }
+  * {
+    scrollbar-color: color-mix(in oklch, var(--foreground) 18%, transparent) transparent;
+    scrollbar-width: thin;
+  }
+  *::-webkit-scrollbar {
+    height: 0.45rem;
+    width: 0.45rem;
+  }
+  *::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    border: 0.125rem solid transparent;
+    border-radius: 999px;
+    background: color-mix(in oklch, var(--foreground) 18%, transparent);
+    background-clip: content-box;
+  }
+  *:hover::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklch, var(--primary) 34%, transparent);
+  }
   p,
   li,
   input,
@@ -238,21 +262,24 @@
     min-width: 2.75rem;
   }
   .thin-scrollbar {
-    scrollbar-color: color-mix(in oklch, var(--primary) 28%, transparent) transparent;
+    scrollbar-color: color-mix(in oklch, var(--primary) 22%, transparent) transparent;
     scrollbar-width: thin;
   }
   .thin-scrollbar::-webkit-scrollbar {
     height: 0.35rem;
+    width: 0.35rem;
   }
   .thin-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
   .thin-scrollbar::-webkit-scrollbar-thumb {
+    border: 0.0625rem solid transparent;
     border-radius: 999px;
-    background: color-mix(in oklch, var(--primary) 22%, transparent);
+    background: color-mix(in oklch, var(--primary) 20%, transparent);
+    background-clip: content-box;
   }
   .thin-scrollbar:hover::-webkit-scrollbar-thumb {
-    background: color-mix(in oklch, var(--primary) 38%, transparent);
+    background-color: color-mix(in oklch, var(--primary) 34%, transparent);
   }
 }
 

@@ -1,10 +1,10 @@
-﻿"use client"
+"use client"
 
 import { useState } from "react"
 import { CalendarDays, Clock, LogOut, Settings } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
-import { useAuth } from "@/lib/auth-context"
-import { cn } from "@/lib/utils"
+import { useAuth } from "@/lib/auth/auth-context"
+import { cn } from "@/lib/utils/utils"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,10 +14,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { PunchView } from "@/components/punch-view"
-import { ReportView } from "@/components/report-view"
-import { SettingsView } from "@/components/settings-view"
-import { UserAvatar } from "@/components/avatar-picker"
+import { PunchView } from "@/components/ponto/punch-view"
+import { ReportView } from "@/components/reports/report-view"
+import { SettingsView } from "@/components/settings/settings-view"
+import { UserAvatar } from "@/components/settings/avatar-picker"
 
 const TAB_THEMES = {
   ponto: {

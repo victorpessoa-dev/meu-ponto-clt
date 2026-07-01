@@ -23,7 +23,7 @@ import {
   UserRound,
   Wrench,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils/utils"
 
 export const AVATAR_OPTIONS = [
   { key: "user", label: "Geral", icon: UserRound, tone: "bg-primary/12 text-primary ring-primary/20" },

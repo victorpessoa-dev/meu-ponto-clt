@@ -1,5 +1,5 @@
-import { LegalPage } from "@/components/legal-page"
-import { privacySections } from "@/lib/legal-content"
+import { LegalPage } from "@/components/legal/legal-page"
+import { privacySections } from "@/lib/legal/legal-content"
 
 export const metadata = {
   title: "Politica de Privacidade",

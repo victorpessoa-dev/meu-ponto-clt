@@ -1,10 +1,10 @@
 import { Analytics } from '@vercel/analytics/next'
 import { Manrope } from 'next/font/google'
 import './globals.css'
-import { OpeningSplash } from '@/components/splash-screen'
-import { ConnectionStatus } from '@/components/connection-status'
-import { ServiceWorkerRegister } from '@/components/sw-register'
-import { ThemeProvider } from '@/components/theme-provider'
+import { OpeningSplash } from '@/components/app/splash-screen'
+import { ConnectionStatus } from '@/components/app/connection-status'
+import { ServiceWorkerRegister } from '@/components/app/sw-register'
+import { ThemeProvider } from '@/components/theme/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 
 const manrope = Manrope({

@@ -1,9 +1,9 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { BarChart3, ChevronLeft, ChevronRight, EyeOff, Save, Table2 } from "lucide-react"
-import { useAuth, useStoreData } from "@/lib/auth-context"
-import { adjustRecord, getJustifications, getMonthJustifications, getMonthRecords, getRecords } from "@/lib/store"
+import { useAuth, useStoreData } from "@/lib/auth/auth-context"
+import { adjustRecord, getJustifications, getMonthJustifications, getMonthRecords, getRecords } from "@/lib/data/store"
 import {
   activeWorkedMinutes,
   bankMetrics,
@@ -16,9 +16,9 @@ import {
   weekdayShort,
   parseISODate,
   timeToMinutes,
-} from "@/lib/time-utils"
-import { JUSTIFICATION_LABELS } from "@/lib/types"
-import { cn } from "@/lib/utils"
+} from "@/lib/time/time-utils"
+import { JUSTIFICATION_LABELS } from "@/lib/data/types"
+import { cn } from "@/lib/utils/utils"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
