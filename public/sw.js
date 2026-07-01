@@ -1,5 +1,5 @@
-ï»¿const CACHE_NAME = "meu-ponto-clt-v1"
-const ASSETS = ["/", "/manifest.json", "/icon.svg", "/favicon.svg", "/apple-icon.svg"]
+const CACHE_NAME = "meu-ponto-clt-v2"
+const ASSETS = ["/", "/offline", "/manifest.json", "/icon.svg", "/favicon.svg", "/apple-icon.svg"]
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)))
@@ -27,7 +27,7 @@ self.addEventListener("fetch", (event) => {
     url.pathname === "/favicon.svg" ||
     url.pathname === "/apple-icon.svg"
 
-  // network-first para navegaÃ§Ã£o, cache como fallback (offline)
+  // network-first para navegação, cache como fallback (offline)
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
@@ -36,7 +36,7 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy))
           return res
         })
-        .catch(() => caches.match(request).then((r) => r || caches.match("/"))),
+        .catch(() => caches.match(request).then((r) => r || caches.match("/offline") || caches.match("/"))),
     )
     return
   }
