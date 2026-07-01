@@ -141,10 +141,10 @@ export function PasswordResetScreen() {
 
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-primary px-safe py-8 pt-safe pb-safe sm:py-10">
-      <div className="pointer-events-none absolute inset-x-8 top-8 h-32 rounded-full bg-positive/20 blur-3xl animate-soft-pulse" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-primary-foreground/25" />
       <div className="w-full max-w-sm animate-fade-slide">
         <div className="mb-6 flex flex-col items-center text-center sm:mb-8">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-foreground/10 ring-1 ring-primary-foreground/20 animate-float">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-foreground/10 ring-1 ring-primary-foreground/20 shadow-[0_16px_48px_rgba(0,0,0,0.12)] animate-float">
             <Icon className="h-8 w-8 text-primary-foreground" strokeWidth={2.25} />
           </div>
           <h1 className="mt-4 text-2xl font-bold tracking-tight text-primary-foreground">
@@ -155,7 +155,7 @@ export function PasswordResetScreen() {
           </p>
         </div>
 
-        <Card className="border-0 shadow-xl">
+        <Card className="border-0 shadow-[0_24px_80px_rgba(0,0,0,0.18)] dark:shadow-none">
           <CardContent className="px-4 py-5 sm:px-6 sm:py-6">
             {checking && <p className="text-center text-sm text-muted-foreground">Aguarde um instante.</p>}
 
@@ -172,7 +172,7 @@ export function PasswordResetScreen() {
 
             {!checking && !done && ready && !expired && (
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                <div className="rounded-2xl border border-border/80 bg-accent/30 px-3 py-2 text-xs leading-5 text-muted-foreground">
                   Informe uma nova senha forte para finalizar a redefinicao.
                 </div>
 

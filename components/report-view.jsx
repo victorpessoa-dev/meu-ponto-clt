@@ -184,8 +184,8 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 rounded-xl border border-primary/20 bg-white p-3 shadow-sm">
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-3.5 rounded-2xl border border-border/80 bg-card/90 p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         <CalendarCarousel
           ariaLabel="Selecionar mês do relatório"
           getValue={(offset) => (cursor.month + offset + 12) % 12}
@@ -203,7 +203,7 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="grid grid-cols-3 gap-3 sm:gap-3.5">
         <SummaryCard label="Trabalhado" value={minutesToHHMM(totalSummary.worked)} />
         <SummaryCard label="Dias" value={String(totalSummary.days)} />
         <SummaryCard
@@ -212,7 +212,7 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
           tone={totalSummary.balance >= 0 ? "positive" : "negative"}
         />
       </div>
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="grid grid-cols-3 gap-3 sm:gap-3.5">
         <SummaryCard label="Trabalho mês" value={minutesToHHMM(monthSummary.worked)} />
         <SummaryCard label="Dias mês" value={String(monthSummary.days)} />
         <SummaryCard
@@ -222,7 +222,7 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
         />
       </div>
 
-      <Card className="overflow-hidden p-4 transition-all duration-300 ease-out sm:p-5">
+      <Card className="overflow-hidden p-5 transition-all duration-300 ease-out">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <BarChart3 className="h-4 w-4 shrink-0 text-primary" />
@@ -272,7 +272,7 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
         <ChartLegend />
       </Card>
 
-      <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-center text-xs text-primary">
+      <div className="rounded-2xl border border-border/80 bg-accent/35 px-4 py-3 text-center text-xs font-medium leading-5 text-accent-foreground">
         Para ajustar entrada, pausa, retorno ou saída, clique em uma linha da planilha.
       </div>
 
@@ -296,7 +296,7 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
         )}
         aria-hidden={!showSheet}
       >
-        <div className="rounded-xl border border-primary/20 bg-white p-1 shadow-sm">
+        <div className="rounded-2xl border border-border/80 bg-card/90 p-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <div className="overflow-x-auto">
             <Card className="mx-auto min-w-[21.5rem] max-w-full overflow-hidden p-0 sm:min-w-0">
               <div className="grid grid-cols-[2.75rem_repeat(5,minmax(3.25rem,1fr))] border-b border-border bg-primary text-[9px] font-semibold uppercase tracking-wide text-primary-foreground sm:grid-cols-[3rem_repeat(5,minmax(3.5rem,1fr))] sm:text-[11px]">
@@ -427,11 +427,11 @@ function CalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onShift,
   const slots = [-2, -1, 0, 1, 2]
 
   return (
-    <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
+    <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2.5">
       <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => onShift(-1)} aria-label={`${ariaLabel} anterior`}>
         <ChevronLeft className="h-5 w-5" />
       </Button>
-      <div className="relative h-16 min-w-0 overflow-hidden rounded-lg bg-primary/5" role="tablist" aria-label={ariaLabel}>
+      <div className="relative h-16 min-w-0 overflow-hidden rounded-2xl bg-muted/65 ring-1 ring-border/70" role="tablist" aria-label={ariaLabel}>
         <div className="absolute inset-x-0 top-1/2 h-11 -translate-y-1/2">
           {slots.map((slot) => {
             const itemValue = getValue(slot)
@@ -444,13 +444,13 @@ function CalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onShift,
                 aria-selected={active}
                 onClick={() => onChange(itemValue)}
                 className={cn(
-                  "absolute top-0 h-11 rounded-lg border px-3 text-sm font-semibold shadow-sm transition-all duration-300 ease-out will-change-transform",
+                  "absolute top-0 h-11 rounded-xl border px-3 text-sm font-semibold shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-300 ease-out will-change-transform",
                   "focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
                   active && "left-[22%] right-[22%] z-20 border-primary bg-primary text-primary-foreground",
-                  slot === -1 && "left-[-5%] right-[73%] z-10 scale-90 border-primary/30 bg-white text-primary opacity-75",
-                  slot === 1 && "left-[73%] right-[-5%] z-10 scale-90 border-primary/30 bg-white text-primary opacity-75",
-                  slot === -2 && "left-[-32%] right-[96%] scale-[0.8] border-primary/20 bg-white text-primary opacity-25",
-                  slot === 2 && "left-[96%] right-[-32%] scale-[0.8] border-primary/20 bg-white text-primary opacity-25",
+                  slot === -1 && "left-[-5%] right-[73%] z-10 scale-90 border-border bg-card text-primary opacity-75",
+                  slot === 1 && "left-[73%] right-[-5%] z-10 scale-90 border-border bg-card text-primary opacity-75",
+                  slot === -2 && "left-[-32%] right-[96%] scale-[0.8] border-border bg-card text-primary opacity-25",
+                  slot === 2 && "left-[96%] right-[-32%] scale-[0.8] border-border bg-card text-primary opacity-25",
                   className,
                 )}
               >
@@ -592,7 +592,7 @@ function statusPillClass({ expected, just }) {
 
 function SummaryCard({ label, value, tone = "default" }) {
   return (
-    <Card className="flex flex-col items-center gap-1 p-3 sm:p-4">
+    <Card className="flex flex-col items-center gap-1.5 p-4">
       <span className="text-center text-[9px] font-medium uppercase tracking-wide text-muted-foreground sm:text-[11px]">{label}</span>
       <span
         className={cn(

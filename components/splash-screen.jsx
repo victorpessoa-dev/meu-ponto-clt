@@ -15,10 +15,10 @@ export function SplashScreen({ fixed = false, leaving = false }) {
       )}
       aria-label="Carregando Meu Ponto CLT"
     >
-      <div className="pointer-events-none absolute inset-x-10 top-16 h-40 rounded-full bg-positive/20 blur-3xl animate-soft-pulse" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-primary-foreground/25" />
 
       <div className="relative flex flex-1 flex-col items-center justify-center text-center">
-        <div className="flex h-24 w-24 items-center justify-center rounded-[1.65rem] bg-primary-foreground/10 p-3 shadow-2xl ring-1 ring-primary-foreground/20 animate-splash-logo sm:h-28 sm:w-28">
+        <div className="flex h-24 w-24 items-center justify-center rounded-[1.65rem] bg-primary-foreground/10 p-3 shadow-[0_24px_80px_rgba(0,0,0,0.18)] ring-1 ring-primary-foreground/20 animate-splash-logo sm:h-28 sm:w-28">
           <img src="/icon.svg" alt="Logo Meu Ponto CLT" className="h-full w-full rounded-[1.25rem]" />
         </div>
 

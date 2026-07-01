@@ -127,7 +127,10 @@ export function PunchView() {
       toast.info("Só é possível bater ponto no dia de hoje. Para corrigir outro dia, use Relatório.")
       return
     }
-    if (record?.[field]) return
+    if (record?.[field]) {
+      toast.info(`${PUNCH_LABELS[field]} já registrada às ${record[field]}.`)
+      return
+    }
     if (!activeFields.some((item) => item.key === field)) {
       toast.info("Esta batida não está configurada para este dia.")
       return
@@ -153,12 +156,12 @@ export function PunchView() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-2">
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/80 bg-card/70 p-2 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         <Button variant="outline" size="icon" className="touch-target shrink-0" onClick={() => shiftDay(-1)} aria-label="Dia anterior">
           <ChevronLeft className="h-5 w-5" />
         </Button>
-        <div className="flex min-w-0 flex-1 flex-col items-center text-center">
+        <div className="flex min-w-0 flex-1 flex-col items-center px-1 text-center">
           <span className="truncate text-sm font-semibold capitalize text-foreground sm:text-base">{friendlyDate(date)}</span>
           {!isToday && (
             <button onClick={() => setDate(today)} className="text-xs font-medium text-primary underline-offset-2 hover:underline">
@@ -180,9 +183,9 @@ export function PunchView() {
       </div>
 
       {isToday && (
-        <div className="rounded-lg border border-primary/20 bg-primary/10 px-4 py-3 text-center">
+        <div className="rounded-2xl border border-border/80 bg-card/80 px-4 py-5 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <p className="text-xs font-medium uppercase text-primary/80">Relógio da empresa</p>
-          <p className="font-mono text-3xl font-bold tabular-nums text-primary">{now}</p>
+          <p className="mt-1 font-mono text-3xl font-bold leading-none tabular-nums text-primary">{now}</p>
         </div>
       )}
 
@@ -201,7 +204,7 @@ export function PunchView() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:gap-3.5">
         {activeFields.map(({ key, label, icon: Icon, tone }) => {
           const value = record?.[key] ?? null
           const needsBreakFirst = key === "returnTime" && !record?.breakTime
@@ -211,7 +214,7 @@ export function PunchView() {
               key={key}
               onClick={() => handlePunch(key)}
               className={cn(
-                "group/punch relative flex min-h-[7rem] flex-col items-start gap-2 rounded-xl border p-3.5 text-left transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40 active:scale-[0.98] sm:min-h-[7.5rem] sm:gap-3 sm:p-4",
+                "group/punch relative flex min-h-[7.25rem] flex-col items-start justify-between gap-3 rounded-2xl border p-4 text-left transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(15,23,42,0.08)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/35 active:scale-[0.98] sm:min-h-[7.75rem] sm:p-4 dark:hover:shadow-none",
                 punchCardClass({ tone, value, canPunch }),
                 !value && !isToday && "opacity-60",
               )}
@@ -332,7 +335,7 @@ function buildAverageWorked(records, justifications, schedule) {
 
 function MonthSummaryCards({ chart }) {
   return (
-    <div className="grid grid-cols-3 gap-2 sm:gap-3">
+    <div className="grid grid-cols-3 gap-3 sm:gap-3.5">
       <MiniMetric label="Trabalhado" value={minutesToHHMM(chart.totalWorked)} />
       <MiniMetric label="Dias" value={String(chart.closedCount)} />
       <MiniMetric
@@ -366,7 +369,7 @@ function MonthOverview({ chart, selectedDate, totalAverageWorked }) {
   }, [chart.days, chartMonthKey])
 
   return (
-    <Card className="overflow-hidden p-4 animate-fade-slide">
+    <Card className="overflow-hidden p-5 animate-fade-slide">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <BarChart3 className="h-4 w-4 shrink-0 text-primary" />
@@ -470,7 +473,7 @@ function chartBarClass(day) {
 
 function MiniMetric({ label, value, tone = "default" }) {
   return (
-    <div className="rounded-xl border border-primary/20 bg-white px-2 py-4 shadow-sm transition-all duration-200 ease-out hover:border-primary/35 hover:bg-primary/5 hover:shadow-md sm:px-3 sm:py-5">
+    <div className="rounded-2xl border border-border/80 bg-card/90 px-2 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-200 ease-out hover:border-primary/30 hover:bg-accent/35 hover:shadow-[0_12px_30px_rgba(15,23,42,0.06)] sm:px-3 sm:py-5 dark:hover:shadow-none">
       <span className="block text-center text-[9px] font-medium uppercase tracking-wide text-primary/80 sm:text-[10px]">{label}</span>
       <p
         className={cn(
@@ -488,18 +491,18 @@ function MiniMetric({ label, value, tone = "default" }) {
 
 function punchCardClass({ tone, value, canPunch }) {
   if (value) {
-    if (tone === "entry") return "border-positive bg-positive text-positive-foreground shadow-md"
-    if (tone === "exit") return "border-negative bg-negative text-negative-foreground shadow-md"
-    if (tone === "break") return "border-chart-3 bg-chart-3 text-primary-foreground shadow-md"
-    if (tone === "return") return "border-primary bg-primary text-primary-foreground shadow-md"
-    return "border-primary bg-primary text-primary-foreground shadow-md"
+    if (tone === "entry") return "border-positive bg-positive text-positive-foreground shadow-[0_12px_28px_rgba(88,168,122,0.18)] dark:shadow-none"
+    if (tone === "exit") return "border-negative bg-negative text-negative-foreground shadow-[0_12px_28px_rgba(220,38,38,0.16)] dark:shadow-none"
+    if (tone === "break") return "border-chart-3 bg-chart-3 text-primary-foreground shadow-[0_12px_28px_rgba(180,132,50,0.15)] dark:shadow-none"
+    if (tone === "return") return "border-primary bg-primary text-primary-foreground shadow-[0_12px_28px_rgba(26,43,74,0.16)] dark:shadow-none"
+    return "border-primary bg-primary text-primary-foreground shadow-[0_12px_28px_rgba(26,43,74,0.16)] dark:shadow-none"
   }
 
-  if (tone === "entry") return "border-positive/70 bg-positive/10 shadow-sm"
-  if (tone === "exit") return "border-negative/70 bg-negative/10 shadow-sm"
-  if (tone === "break") return "border-chart-3/70 bg-chart-3/10 shadow-sm"
-  if (tone === "return") return "border-primary/70 bg-primary/10 shadow-sm"
-  return "border-primary/70 bg-primary/10 shadow-sm"
+  if (tone === "entry") return "border-positive/35 bg-positive/10 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+  if (tone === "exit") return "border-negative/35 bg-negative/10 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+  if (tone === "break") return "border-chart-3/35 bg-chart-3/10 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+  if (tone === "return") return "border-primary/30 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+  return "border-primary/30 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
 }
 
 function punchIconClass({ tone, value, canPunch }) {
@@ -524,7 +527,7 @@ function punchTextClass(tone) {
 
 function DaySummary({ label, value, tone = "default" }) {
   return (
-    <div className="flex flex-col items-center gap-0.5 px-2 py-4">
+    <div className="flex flex-col items-center gap-1 px-2 py-5">
       <span className="text-center text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">{label}</span>
       <span
         className={cn(

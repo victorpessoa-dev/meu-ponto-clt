@@ -1,8 +1,17 @@
 import { Analytics } from '@vercel/analytics/next'
+import { Manrope } from 'next/font/google'
 import './globals.css'
 import { OpeningSplash } from '@/components/splash-screen'
 import { ServiceWorkerRegister } from '@/components/sw-register'
+import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
+
+const manrope = Manrope({
+  subsets: ['latin'],
+  variable: '--font-manrope',
+  display: 'swap',
+  weight: ['500', '600', '700'],
+})
 
 export const metadata = {
   metadataBase: new URL('https://meu-ponto-clt.local'),
@@ -50,7 +59,7 @@ export const metadata = {
 }
 
 export const viewport = {
-  colorScheme: 'light',
+  colorScheme: 'light dark',
   themeColor: '#1a2b4a',
   width: 'device-width',
   initialScale: 1,
@@ -59,13 +68,15 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="pt-BR" className="bg-background">
-      <body className="font-sans antialiased">
-        {children}
-        <OpeningSplash />
-        <ServiceWorkerRegister />
-        <Toaster position="top-center" />
-        {process.env.NODE_ENV === 'production' && <Analytics />}
+    <html lang="pt-BR" className="bg-background" suppressHydrationWarning>
+      <body className={`${manrope.variable} font-sans antialiased`}>
+        <ThemeProvider>
+          {children}
+          <OpeningSplash />
+          <ServiceWorkerRegister />
+          <Toaster position="top-center" />
+          {process.env.NODE_ENV === 'production' && <Analytics />}
+        </ThemeProvider>
       </body>
     </html>
   )
