@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import {
+  Moon,
   CalendarCog,
   Clock,
   Cog,
@@ -59,6 +60,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { PasswordField } from "@/components/password-field"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { toast } from "sonner"
 
 const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
@@ -81,11 +83,11 @@ export function SettingsView({ onImportComplete }) {
   if (!user) return null
 
   return (
-    <Tabs defaultValue="perfil" className="flex flex-col gap-4">
-      <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-xl p-1">
-        <TabsTrigger value="perfil" className="min-h-10 px-1 py-2 text-xs sm:text-sm">Perfil</TabsTrigger>
-        <TabsTrigger value="justificar" className="min-h-10 px-1 py-2 text-xs sm:text-sm">Justificar</TabsTrigger>
-        <TabsTrigger value="planilha" className="min-h-10 px-1 py-2 text-xs sm:text-sm">Planilha</TabsTrigger>
+    <Tabs defaultValue="perfil" className="flex flex-col gap-5">
+      <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-2xl p-1">
+        <TabsTrigger value="perfil" className="min-h-11 px-1 py-2 text-xs sm:text-sm">Perfil</TabsTrigger>
+        <TabsTrigger value="justificar" className="min-h-11 px-1 py-2 text-xs sm:text-sm">Justificar</TabsTrigger>
+        <TabsTrigger value="planilha" className="min-h-11 px-1 py-2 text-xs sm:text-sm">Planilha</TabsTrigger>
       </TabsList>
 
       <TabsContent value="perfil" className="animate-fade-slide">
@@ -252,9 +254,9 @@ function ProfileSection() {
       <CardHeader>
         <CardTitle className="text-base">Meus dados</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4 px-4 py-4 sm:px-5">
-        <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
-          <UserAvatar avatarIcon={avatarIcon} name={name} className="h-12 w-12" iconClassName="h-6 w-6" />
+      <CardContent className="flex flex-col gap-5 px-4 py-4 sm:px-5">
+        <div className="flex items-center gap-4 rounded-2xl border border-border/80 bg-accent/30 p-4">
+          <UserAvatar avatarIcon={avatarIcon} name={name} className="h-14 w-14" iconClassName="h-6 w-6" />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">{name}</p>
             <p className="truncate text-xs text-muted-foreground">
@@ -263,7 +265,7 @@ function ProfileSection() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-3.5">
           <SettingsOption
             icon={UserCog}
             title="Perfil"
@@ -288,6 +290,12 @@ function ProfileSection() {
             description={`Horário ajustado: ${clockPreview}`}
             onOpen={() => setActiveDialog("clock")}
           />
+          <SettingsOption
+            icon={Moon}
+            title="Aparência"
+            description="Modo claro e escuro"
+            onOpen={() => setActiveDialog("appearance")}
+          />
         </div>
 
         <div className="flex justify-center">
@@ -309,7 +317,7 @@ function ProfileSection() {
             <DialogDescription>Atualize nome, nascimento, empresa, função e avatar.</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+            <div className="flex items-center gap-3 rounded-2xl border border-border/80 bg-accent/30 p-3">
               <UserAvatar avatarIcon={avatarIcon} name={name} className="h-12 w-12" iconClassName="h-6 w-6" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-foreground">{name}</p>
@@ -432,7 +440,7 @@ function ProfileSection() {
                     key={day}
                     className={cn(
                       "rounded-lg border p-2 transition-colors",
-                      enabled ? "border-primary/30 bg-background" : "border-primary/10 bg-primary/5",
+                      enabled ? "border-primary/30 bg-card" : "border-border bg-muted/45",
                     )}
                   >
                     <button
@@ -486,7 +494,7 @@ function ProfileSection() {
             <DialogDescription>Defina o horário local usado no registro do ponto.</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3">
-            <div className="rounded-lg border border-primary/30 bg-background px-4 py-4 text-center shadow-sm">
+            <div className="rounded-2xl border border-border/80 bg-card px-4 py-4 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
               <p className="font-mono text-4xl font-bold leading-none tabular-nums text-primary">{clockPreview}</p>
               <p className="mt-1 text-[10px] font-medium uppercase text-muted-foreground">Horário ajustado</p>
             </div>
@@ -505,6 +513,25 @@ function ProfileSection() {
               <Save className="mr-2 h-4 w-4" />
               Salvar relógio
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={activeDialog === "appearance"} onOpenChange={(open) => !open && setActiveDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ajustar aparência</DialogTitle>
+            <DialogDescription>Escolha entre modo claro e modo escuro.</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/80 bg-card/70 p-4">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-primary">Modo escuro</p>
+              <p className="text-xs text-muted-foreground">Aplicado imediatamente ao sistema.</p>
+            </div>
+            <ThemeToggle />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" type="button" onClick={() => setActiveDialog(null)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -556,20 +583,20 @@ function ProfileSection() {
 
 function SettingsOption({ icon: Icon, title, description, onOpen }) {
   return (
-    <div className="group rounded-lg border border-primary/20 bg-primary/5 p-3 transition-all duration-200 ease-out hover:border-primary/35 hover:bg-primary/10">
-      <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-background text-primary">
+    <div className="group rounded-2xl border border-border/80 bg-card/70 p-4 transition-all duration-200 ease-out hover:border-primary/30 hover:bg-accent/35">
+      <div className="flex items-center gap-3.5">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-accent/45 text-primary">
           <Icon className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-primary">{title}</p>
-          <p className="truncate text-xs text-muted-foreground">{description}</p>
+          <p className="truncate text-xs leading-5 text-muted-foreground">{description}</p>
         </div>
         <Button
           type="button"
           variant="outline"
           size="icon"
-          className="h-10 w-10 shrink-0 border-primary/25 bg-background text-primary transition-all duration-200 ease-out hover:border-primary/50 hover:bg-primary/10 hover:text-primary hover:shadow-sm"
+          className="h-11 w-11 shrink-0 border-border/80 bg-card text-primary transition-all duration-200 ease-out hover:border-primary/40 hover:bg-accent/45 hover:text-primary"
           onClick={onOpen}
           aria-label={`Abrir ${title}`}
         >
@@ -586,7 +613,7 @@ function ClockAdjust({ label, step, value, onChange }) {
   }
 
   return (
-    <div className="rounded-lg border border-primary/20 bg-background p-2">
+    <div className="rounded-2xl border border-border/80 bg-card p-2">
       <p className="mb-2 text-center text-xs font-medium text-muted-foreground">{label}</p>
       <div className="flex items-center justify-center gap-10 sm:gap-8">
         <Button
@@ -750,7 +777,7 @@ function JustifySection() {
             )}
           </div>
           {type === "abono" && (
-            <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-3">
+            <div className="rounded-2xl border border-border/80 bg-accent/30 px-3 py-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="abono-start">Horário inicial</Label>
@@ -791,7 +818,7 @@ function JustifySection() {
           </CardHeader>
           <CardContent className="flex flex-col gap-2 px-4 py-4 sm:px-5">
             {justifications.map((j) => (
-              <div key={j.id} className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+              <div key={j.id} className="flex items-center justify-between gap-3 rounded-2xl border border-border/80 bg-card/70 p-3">
                 <div className="min-w-0">
                   <p className="text-xs font-medium uppercase text-primary/80">Informação registrada</p>
                   <p className="text-sm font-medium capitalize text-foreground">{friendlyDate(j.date)}</p>
@@ -971,7 +998,7 @@ function SpreadsheetSection({ onImportComplete }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 px-4 py-4 sm:px-5">
-          <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
+          <div className="rounded-2xl border border-border/80 bg-accent/30 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
             A importação lê todas as abas do XLSX, usando apenas Data, Entrada, Pausa, Retorno e Saída.
             Colunas como Hrs Trabalho, Banco, Total e demais cálculos são ignoradas.
           </div>

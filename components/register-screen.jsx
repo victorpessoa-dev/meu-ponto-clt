@@ -107,16 +107,16 @@ export function RegisterScreen() {
 
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-primary px-safe py-8 pt-safe pb-safe sm:py-10">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-positive/20 animate-color-wash" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-primary-foreground/25" />
       <div className="w-full max-w-md animate-fade-slide">
         <div className="mb-6 flex flex-col items-center text-center sm:mb-8">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-foreground/10 ring-1 ring-primary-foreground/20 animate-float">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-foreground/10 ring-1 ring-primary-foreground/20 shadow-[0_16px_48px_rgba(0,0,0,0.12)] animate-float">
             <Clock className="h-8 w-8 text-primary-foreground" strokeWidth={2.25} />
           </div>
           <h1 className="mt-4 text-2xl font-bold tracking-tight text-primary-foreground">Criar cadastro</h1>
         </div>
 
-        <Card className="border-0 shadow-xl">
+        <Card className="border-0 shadow-[0_24px_80px_rgba(0,0,0,0.18)] dark:shadow-none">
           <CardContent className="px-4 py-5 sm:px-6 sm:py-6">
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted p-1">
@@ -149,7 +149,7 @@ export function RegisterScreen() {
 
               {step === "dados" && (
                 <section className="animate-step-panel flex flex-col gap-4">
-                  <div className="rounded-lg border border-positive/20 bg-positive/5 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                  <div className="rounded-2xl border border-border/80 bg-accent/30 px-3 py-2 text-xs leading-5 text-muted-foreground">
                     Informe seus dados profissionais. Eles ajudam a organizar jornada, relatorios e perfil.
                   </div>
 
@@ -232,7 +232,7 @@ export function RegisterScreen() {
 
               {step === "login" && (
                 <section className="animate-step-panel flex flex-col gap-4">
-                  <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs leading-5 text-muted-foreground">
+                  <div className="rounded-2xl border border-border/80 bg-accent/30 px-3 py-2 text-xs leading-5 text-muted-foreground">
                     Use um e-mail unico. Enviaremos uma confirmacao para ativar o cadastro.
                   </div>
 

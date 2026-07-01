@@ -30,9 +30,9 @@ export function RouteBlockScreen({ type = "restricted" }) {
 
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-primary px-safe py-8 pt-safe pb-safe sm:py-10">
-      <div className="pointer-events-none absolute inset-x-8 top-8 h-32 rounded-full bg-positive/20 blur-3xl animate-soft-pulse" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-primary-foreground/25" />
       <div className="w-full max-w-sm animate-fade-slide text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-foreground/10 ring-1 ring-primary-foreground/20 animate-float">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-foreground/10 ring-1 ring-primary-foreground/20 shadow-[0_16px_48px_rgba(0,0,0,0.12)] animate-float">
           <Icon className="h-8 w-8 text-primary-foreground" strokeWidth={2.25} />
         </div>
         <h1 className="mt-5 text-2xl font-bold tracking-tight text-primary-foreground">{copy.title}</h1>
