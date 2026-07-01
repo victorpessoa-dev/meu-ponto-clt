@@ -38,6 +38,7 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
   const { user } = useAuth()
   const now = new Date()
   const chartScrollRef = useRef(null)
+  const autoScrollKeyRef = useRef(null)
   const [cursor, setCursor] = useState({ year: now.getFullYear(), month: now.getMonth() })
   const [showSheet, setShowSheet] = useState(true)
   const [editDate, setEditDate] = useState(null)
@@ -101,15 +102,26 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
     [allJustifications, allRecords, schedule],
   )
 
+  const chartMonthKey = dayMetrics[0]?.iso.slice(0, 7) ?? ""
+
   useEffect(() => {
-    scrollChartToToday(chartScrollRef.current, dayMetrics)
-  }, [dayMetrics])
+    // Auto-scroll só na primeira abertura do mês atual; depois disso o usuário controla o scroll.
+    if (autoScrollKeyRef.current === chartMonthKey) return
+    if (!dayMetrics.some((day) => day.iso === todayISO())) return
+
+    autoScrollKeyRef.current = chartMonthKey
+    scrollChartToToday(chartScrollRef.current, todayISO())
+  }, [chartMonthKey, dayMetrics])
 
   if (!user) return null
 
   const editDay = dayMetrics.find((day) => day.iso === editDate)
   const chartMaxMinutes = Math.max(maxChartMinutes, averageWorked, 60)
   const monthAverageTop = `${100 - Math.min(100, (averageWorked / chartMaxMinutes) * 100)}%`
+  // A trilha precisa ter largura real do mês para a linha média acompanhar todos os dias no scroll.
+  const chartTrackStyle = {
+    minWidth: `${Math.max(dayMetrics.length * 32, 320)}px`,
+  }
 
   function openEdit(day) {
     setEditDate(day.iso)
@@ -219,10 +231,10 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
           <span className="text-xs text-muted-foreground">Saldo por dia</span>
         </div>
         <div ref={chartScrollRef} className="thin-scrollbar h-40 overflow-x-auto pb-1 sm:h-48">
-          <div className="relative flex h-full min-w-[42rem] items-end gap-1 sm:min-w-full sm:gap-1.5">
+          <div className="relative flex h-full w-full items-end gap-1 sm:gap-1.5" style={chartTrackStyle}>
             {averageWorked > 0 && (
               <span
-                className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-chart-3/80"
+                className="pointer-events-none absolute inset-x-0 z-10 block border-t border-dashed border-chart-3/80"
                 style={{ top: monthAverageTop }}
                 title={`Média mensal ${minutesToHHMM(Math.round(averageWorked))}`}
               />
@@ -496,17 +508,15 @@ function buildTotalSummary(records, justifications, schedule) {
   )
 }
 
-function scrollChartToToday(container, days) {
-  const today = todayISO()
-  if (!container || !days.some((day) => day.iso === today)) return
-
+function scrollChartToToday(container, today) {
+  if (!container) return
   window.requestAnimationFrame(() => {
     const target = container.querySelector(`[data-day-iso="${today}"]`)
     if (!target) return
 
     const targetCenter = target.offsetLeft + target.offsetWidth / 2
     const nextScroll = Math.max(0, targetCenter - container.clientWidth / 2)
-    container.scrollTo({ left: nextScroll, behavior: "smooth" })
+    container.scrollTo({ left: nextScroll, behavior: "auto" })
   })
 }
 

@@ -1,5 +1,6 @@
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
+import { OpeningSplash } from '@/components/splash-screen'
 import { ServiceWorkerRegister } from '@/components/sw-register'
 import { Toaster } from '@/components/ui/sonner'
 
@@ -13,9 +14,9 @@ export const metadata = {
     'Registre horários de ponto, acompanhe banco de horas, importe planilhas XLSX e personalize seu perfil profissional.',
   applicationName: 'Meu Ponto CLT',
   keywords: ['ponto eletrônico', 'controle de jornada', 'CLT', 'banco de horas', 'planilha de ponto'],
-  authors: [{ name: 'Meu Ponto CLT' }],
-  creator: 'Meu Ponto CLT',
-  publisher: 'Meu Ponto CLT',
+  authors: [{ name: 'Virtus Soft' }],
+  creator: 'Virtus Soft',
+  publisher: 'Virtus Soft',
   manifest: '/manifest.json',
   openGraph: {
     title: 'Meu Ponto CLT',
@@ -61,6 +62,7 @@ export default function RootLayout({ children }) {
     <html lang="pt-BR" className="bg-background">
       <body className="font-sans antialiased">
         {children}
+        <OpeningSplash />
         <ServiceWorkerRegister />
         <Toaster position="top-center" />
         {process.env.NODE_ENV === 'production' && <Analytics />}

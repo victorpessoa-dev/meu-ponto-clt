@@ -84,6 +84,7 @@ export function LoginScreen({ onSuccess }) {
           </div>
           <h1 className="mt-4 text-2xl font-bold tracking-tight text-primary-foreground">Meu Ponto CLT</h1>
           <p className="mt-1 text-sm text-primary-foreground/70">Controle de jornada de trabalho</p>
+          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/55">Virtus Soft</p>
         </div>
 
         <Card className="border-0 shadow-xl">

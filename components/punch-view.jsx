@@ -346,13 +346,24 @@ function MonthSummaryCards({ chart }) {
 
 function MonthOverview({ chart, selectedDate, totalAverageWorked }) {
   const scrollRef = useRef(null)
+  const autoScrollKeyRef = useRef(null)
   const chartMaxMinutes = Math.max(chart.maxMinutes, totalAverageWorked, 60)
   const totalAverageTop = `${100 - Math.min(100, (totalAverageWorked / chartMaxMinutes) * 100)}%`
   const today = todayISO()
+  const chartMonthKey = chart.days[0]?.iso.slice(0, 7) ?? ""
+  // A trilha precisa ter largura real do mês para a linha média acompanhar todos os dias no scroll.
+  const trackStyle = {
+    minWidth: `${Math.max(chart.days.length * 32, 320)}px`,
+  }
 
   useEffect(() => {
-    scrollChartToToday(scrollRef.current, chart.days)
-  }, [chart.days])
+    // Auto-scroll só na primeira abertura do mês atual; depois disso o usuário controla o scroll.
+    if (autoScrollKeyRef.current === chartMonthKey) return
+    if (!chart.days.some((day) => day.iso === todayISO())) return
+
+    autoScrollKeyRef.current = chartMonthKey
+    scrollChartToToday(scrollRef.current, todayISO())
+  }, [chart.days, chartMonthKey])
 
   return (
     <Card className="overflow-hidden p-4 animate-fade-slide">
@@ -370,10 +381,10 @@ function MonthOverview({ chart, selectedDate, totalAverageWorked }) {
       </div>
 
       <div ref={scrollRef} className="thin-scrollbar h-44 overflow-x-auto pb-1 sm:h-56">
-        <div className="relative flex h-full min-w-[42rem] items-end gap-1 sm:min-w-full">
+        <div className="relative flex h-full w-full items-end gap-1" style={trackStyle}>
           {totalAverageWorked > 0 && (
             <span
-              className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-primary/70"
+              className="pointer-events-none absolute inset-x-0 z-10 block border-t border-dashed border-primary/70"
               style={{ top: totalAverageTop }}
               title={`Média total ${minutesToHHMM(Math.round(totalAverageWorked))}`}
             />
@@ -435,17 +446,15 @@ function MonthOverview({ chart, selectedDate, totalAverageWorked }) {
   )
 }
 
-function scrollChartToToday(container, days) {
-  const today = todayISO()
-  if (!container || !days.some((day) => day.iso === today)) return
-
+function scrollChartToToday(container, today) {
+  if (!container) return
   window.requestAnimationFrame(() => {
     const target = container.querySelector(`[data-day-iso="${today}"]`)
     if (!target) return
 
     const targetCenter = target.offsetLeft + target.offsetWidth / 2
     const nextScroll = Math.max(0, targetCenter - container.clientWidth / 2)
-    container.scrollTo({ left: nextScroll, behavior: "smooth" })
+    container.scrollTo({ left: nextScroll, behavior: "auto" })
   })
 }
 
