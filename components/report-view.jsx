@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { BarChart3, ChevronLeft, ChevronRight, EyeOff, Save, Table2 } from "lucide-react"
 import { useAuth, useStoreData } from "@/lib/auth-context"
 import { adjustRecord, getJustifications, getMonthJustifications, getMonthRecords, getRecords } from "@/lib/store"
@@ -12,6 +12,8 @@ import {
   todayISO,
   toISODate,
   weekdayShort,
+  parseISODate,
+  timeToMinutes,
 } from "@/lib/time-utils"
 import { JUSTIFICATION_LABELS } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -35,6 +37,7 @@ import { toast } from "sonner"
 export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
   const { user } = useAuth()
   const now = new Date()
+  const chartScrollRef = useRef(null)
   const [cursor, setCursor] = useState({ year: now.getFullYear(), month: now.getMonth() })
   const [showSheet, setShowSheet] = useState(true)
   const [editDate, setEditDate] = useState(null)
@@ -57,7 +60,7 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
   )
   const schedule = user?.schedule ?? []
 
-  const { dayMetrics, maxChartMinutes, averageWorked } = useMemo(() => {
+  const { dayMetrics, maxChartMinutes, averageWorked, monthSummary } = useMemo(() => {
     const recordsByDate = new Map(records.map((record) => [record.date, record]))
     const justByDate = new Map(justifications.map((justification) => [justification.date, justification]))
     const daysInMonth = new Date(cursor.year, cursor.month + 1, 0).getDate()
@@ -71,7 +74,7 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
         rec,
         just,
         ...metrics,
-        weekend: [0, 6].includes(new Date(iso + "T00:00:00").getDay()),
+        weekend: [0, 6].includes(parseISODate(iso).getDay()),
       }
     })
 
@@ -81,6 +84,15 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
       dayMetrics: metrics,
       maxChartMinutes: Math.max(60, ...metrics.map((day) => day.worked)),
       averageWorked: bankable.length > 0 ? bankable.reduce((total, day) => total + day.worked, 0) / bankable.length : 0,
+      monthSummary: bankable.reduce(
+        (acc, day) => {
+          acc.worked += day.worked
+          acc.balance += day.balance
+          acc.days += 1
+          return acc
+        },
+        { worked: 0, balance: 0, days: 0 },
+      ),
     }
   }, [cursor.month, cursor.year, justifications, records, schedule])
 
@@ -88,6 +100,10 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
     () => buildTotalSummary(allRecords, allJustifications, schedule),
     [allJustifications, allRecords, schedule],
   )
+
+  useEffect(() => {
+    scrollChartToToday(chartScrollRef.current, dayMetrics)
+  }, [dayMetrics])
 
   if (!user) return null
 
@@ -108,15 +124,40 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
   async function saveEdit() {
     if (!editDate) return
 
+    const entry = timeToMinutes(editValues.entry)
+    const breakTime = timeToMinutes(editValues.breakTime)
+    const returnTime = timeToMinutes(editValues.returnTime)
+    const exit = timeToMinutes(editValues.exit)
+
+    if (editValues.breakTime && !editValues.entry) {
+      toast.error("Informe a entrada antes da pausa.")
+      return
+    }
     if (editValues.returnTime && !editValues.breakTime) {
       toast.error("Informe a pausa antes do retorno.")
       return
     }
-    if (editValues.breakTime && editValues.returnTime && editValues.returnTime <= editValues.breakTime) {
+    if (editValues.exit && !editValues.entry) {
+      toast.error("Informe a entrada antes da saída.")
+      return
+    }
+    if (editValues.breakTime && editValues.exit && !editValues.returnTime) {
+      toast.error("Informe o retorno antes da saída quando houver pausa.")
+      return
+    }
+    if (entry != null && breakTime != null && breakTime <= entry) {
+      toast.error("A pausa deve ser depois da entrada.")
+      return
+    }
+    if (breakTime != null && returnTime != null && returnTime <= breakTime) {
       toast.error("O retorno deve ser depois da pausa.")
       return
     }
-    if (editValues.entry && editValues.exit && editValues.exit <= editValues.entry) {
+    if (returnTime != null && exit != null && exit <= returnTime) {
+      toast.error("A saída deve ser depois do retorno.")
+      return
+    }
+    if (entry != null && exit != null && exit <= entry) {
       toast.error("A saída deve ser depois da entrada.")
       return
     }
@@ -159,6 +200,15 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
           tone={totalSummary.balance >= 0 ? "positive" : "negative"}
         />
       </div>
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <SummaryCard label="Trabalho mês" value={minutesToHHMM(monthSummary.worked)} />
+        <SummaryCard label="Dias mês" value={String(monthSummary.days)} />
+        <SummaryCard
+          label="Banco mês"
+          value={minutesToHHMM(monthSummary.balance)}
+          tone={monthSummary.balance >= 0 ? "positive" : "negative"}
+        />
+      </div>
 
       <Card className="overflow-hidden p-4 transition-all duration-300 ease-out sm:p-5">
         <div className="mb-4 flex items-center justify-between gap-3">
@@ -168,41 +218,44 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
           </div>
           <span className="text-xs text-muted-foreground">Saldo por dia</span>
         </div>
-        <div className="relative flex h-40 items-end gap-1 overflow-x-auto pb-1 sm:h-48 sm:gap-1.5">
-          {averageWorked > 0 && (
-            <span
-              className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-chart-3/80"
-              style={{ top: monthAverageTop }}
-              title={`Média mensal ${minutesToHHMM(Math.round(averageWorked))}`}
-            />
-          )}
-          {dayMetrics.map((day) => {
-            const workedHeight = `${Math.max(4, (day.worked / chartMaxMinutes) * 100)}%`
-            const focused = day.iso === editDate || day.iso === todayISO()
-            return (
-              <div
-                key={day.iso}
-                className={cn(
-                  "group/day flex min-w-6 flex-1 cursor-default flex-col items-center gap-1 rounded-md px-0.5 outline-none transition-all duration-200 ease-out hover:bg-primary/5",
-                  focused && "bg-primary/10",
-                )}
-                title={dayTitle(day)}
-              >
-                <div className="flex h-32 w-full items-end justify-center sm:h-40">
-                  <span
-                    className={cn(
-                      "w-3 origin-bottom rounded-t transition-all duration-500 ease-out group-hover/day:scale-y-105",
-                      chartBarClass(day),
-                      focused && "ring-2 ring-primary ring-offset-1 ring-offset-background",
-                    )}
-                    style={{ height: workedHeight }}
-                    title={dayTitle(day)}
-                  />
+        <div ref={chartScrollRef} className="thin-scrollbar h-40 overflow-x-auto pb-1 sm:h-48">
+          <div className="relative flex h-full min-w-[42rem] items-end gap-1 sm:min-w-full sm:gap-1.5">
+            {averageWorked > 0 && (
+              <span
+                className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-chart-3/80"
+                style={{ top: monthAverageTop }}
+                title={`Média mensal ${minutesToHHMM(Math.round(averageWorked))}`}
+              />
+            )}
+            {dayMetrics.map((day) => {
+              const workedHeight = `${Math.max(4, (day.worked / chartMaxMinutes) * 100)}%`
+              const focused = day.iso === editDate || day.iso === todayISO()
+              return (
+                <div
+                  key={day.iso}
+                  data-day-iso={day.iso}
+                  className={cn(
+                    "group/day flex min-w-6 flex-1 cursor-default flex-col items-center gap-1 rounded-md px-0.5 outline-none transition-all duration-200 ease-out hover:bg-primary/5",
+                    focused && "bg-primary/10",
+                  )}
+                  title={dayTitle(day)}
+                >
+                  <div className="flex h-32 w-full items-end justify-center sm:h-40">
+                    <span
+                      className={cn(
+                        "w-3 origin-bottom rounded-t transition-all duration-500 ease-out group-hover/day:scale-y-105",
+                        chartBarClass(day),
+                        focused && "ring-2 ring-primary ring-offset-1 ring-offset-background",
+                      )}
+                      style={{ height: workedHeight }}
+                      title={dayTitle(day)}
+                    />
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">{day.iso.split("-")[2]}</span>
                 </div>
-                <span className="text-[10px] text-muted-foreground">{day.iso.split("-")[2]}</span>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
         <ChartLegend />
       </Card>
@@ -441,6 +494,20 @@ function buildTotalSummary(records, justifications, schedule) {
     },
     { worked: 0, balance: 0, days: 0 },
   )
+}
+
+function scrollChartToToday(container, days) {
+  const today = todayISO()
+  if (!container || !days.some((day) => day.iso === today)) return
+
+  window.requestAnimationFrame(() => {
+    const target = container.querySelector(`[data-day-iso="${today}"]`)
+    if (!target) return
+
+    const targetCenter = target.offsetLeft + target.offsetWidth / 2
+    const nextScroll = Math.max(0, targetCenter - container.clientWidth / 2)
+    container.scrollTo({ left: nextScroll, behavior: "smooth" })
+  })
 }
 
 function chartBarClass(day) {

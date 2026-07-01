@@ -9,6 +9,9 @@ import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
+const PAGE_ACTIVE_LIMIT_MS = 10 * 60 * 1000
+const MAX_LINK_ATTEMPTS = 3
+
 export function EmailConfirmationScreen() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -18,6 +21,10 @@ export function EmailConfirmationScreen() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    const expiresAt = Date.now() + PAGE_ACTIVE_LIMIT_MS
+    const expiryTimer = window.setTimeout(() => {
+      setStatus((current) => (["confirmed", "error"].includes(current) ? current : "expired"))
+    }, PAGE_ACTIVE_LIMIT_MS)
     let cancelled = false
     let timer
 
@@ -25,16 +32,31 @@ export function EmailConfirmationScreen() {
       const hasTokenHash = typeof window !== "undefined" && window.location.hash.includes("access_token")
       if (!code && !hasTokenHash) return
 
+      if (Date.now() > expiresAt) {
+        setStatus("expired")
+        return
+      }
+
       setStatus("checking")
       setError(null)
 
       if (code) {
+        const attemptKey = `confirm-email-attempts:${code}`
+        const attempts = Number(window.sessionStorage.getItem(attemptKey) || "0")
+        if (attempts >= MAX_LINK_ATTEMPTS) {
+          setError("Limite de tentativas atingido para este link. Solicite um novo cadastro ou tente entrar pelo login.")
+          setStatus("error")
+          return
+        }
+
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
         if (exchangeError && !cancelled) {
+          window.sessionStorage.setItem(attemptKey, String(attempts + 1))
           setError(exchangeError.message || "Nao foi possivel confirmar o e-mail.")
           setStatus("error")
           return
         }
+        window.sessionStorage.removeItem(attemptKey)
       }
 
       await supabase.auth.signOut()
@@ -48,11 +70,12 @@ export function EmailConfirmationScreen() {
 
     return () => {
       cancelled = true
+      window.clearTimeout(expiryTimer)
       if (timer) window.clearTimeout(timer)
     }
   }, [code, router])
 
-  const Icon = status === "confirmed" ? CheckCircle2 : status === "error" ? TriangleAlert : status === "checking" ? Clock : MailCheck
+  const Icon = status === "confirmed" ? CheckCircle2 : status === "error" || status === "expired" ? TriangleAlert : status === "checking" ? Clock : MailCheck
 
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-primary px-safe py-8 pt-safe pb-safe sm:py-10">
@@ -63,7 +86,13 @@ export function EmailConfirmationScreen() {
             <Icon className="h-8 w-8 text-primary-foreground" strokeWidth={2.25} />
           </div>
           <h1 className="mt-4 text-2xl font-bold tracking-tight text-primary-foreground">
-            {status === "confirmed" ? "E-mail confirmado" : status === "error" ? "Confirmacao pendente" : "Confirme seu e-mail"}
+            {status === "confirmed"
+              ? "E-mail confirmado"
+              : status === "error"
+                ? "Confirmacao pendente"
+                : status === "expired"
+                  ? "Página expirada"
+                  : "Confirme seu e-mail"}
           </h1>
           <p className="mt-1 text-sm text-primary-foreground/70">
             {status === "checking" ? "Validando o link de confirmacao" : "Meu Ponto CLT"}
@@ -98,6 +127,12 @@ export function EmailConfirmationScreen() {
             {status === "error" && (
               <p className="rounded-md border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
                 {error || "O link expirou ou ja foi usado. Tente entrar ou solicite um novo cadastro."}
+              </p>
+            )}
+
+            {status === "expired" && (
+              <p className="rounded-md border border-chart-3/30 bg-chart-3/10 px-3 py-2 text-sm text-chart-3" role="alert">
+                Esta página ficou aberta por muito tempo. Abra o link novamente ou volte para o login.
               </p>
             )}
 

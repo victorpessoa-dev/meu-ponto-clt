@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { BarChart3, ChevronLeft, ChevronRight, DoorOpen, LogIn, LogOut, Coffee, Utensils, Check } from "lucide-react"
 import { useAuth, useStoreData } from "@/lib/auth-context"
 import {
@@ -345,8 +345,14 @@ function MonthSummaryCards({ chart }) {
 }
 
 function MonthOverview({ chart, selectedDate, totalAverageWorked }) {
+  const scrollRef = useRef(null)
   const chartMaxMinutes = Math.max(chart.maxMinutes, totalAverageWorked, 60)
   const totalAverageTop = `${100 - Math.min(100, (totalAverageWorked / chartMaxMinutes) * 100)}%`
+  const today = todayISO()
+
+  useEffect(() => {
+    scrollChartToToday(scrollRef.current, chart.days)
+  }, [chart.days])
 
   return (
     <Card className="overflow-hidden p-4 animate-fade-slide">
@@ -363,41 +369,44 @@ function MonthOverview({ chart, selectedDate, totalAverageWorked }) {
         </span>
       </div>
 
-      <div className="relative flex h-44 items-end gap-1 overflow-x-auto pb-1 sm:h-56">
-        {totalAverageWorked > 0 && (
-          <span
-            className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-primary/70"
-            style={{ top: totalAverageTop }}
-            title={`Média total ${minutesToHHMM(Math.round(totalAverageWorked))}`}
-          />
-        )}
-        {chart.days.map((day) => {
-          const workedHeight = `${Math.max(5, (day.worked / chartMaxMinutes) * 100)}%`
-          const active = day.iso === selectedDate || day.iso === todayISO()
-          return (
-            <div
-              key={day.iso}
-              className={cn(
-                "group/homebar flex min-w-5 flex-1 flex-col items-center gap-1 rounded-md px-0.5 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-primary/5 hover:shadow-sm",
-                active && "bg-primary/10",
-              )}
-            >
-              <div className="flex h-36 w-full items-end justify-center sm:h-48">
-                <span
-                  className={cn(
-                    "w-3 origin-bottom rounded-t transition-all duration-500 group-hover/homebar:scale-y-105",
-                    chartBarClass(day),
-                    active && "ring-2 ring-primary ring-offset-1 ring-offset-background",
-                    day.future && "opacity-30",
-                  )}
-                  style={{ height: workedHeight }}
-                  title={day.bankable ? `Trabalhado ${minutesToHHMM(day.worked)}` : "Sem banco"}
-                />
+      <div ref={scrollRef} className="thin-scrollbar h-44 overflow-x-auto pb-1 sm:h-56">
+        <div className="relative flex h-full min-w-[42rem] items-end gap-1 sm:min-w-full">
+          {totalAverageWorked > 0 && (
+            <span
+              className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-primary/70"
+              style={{ top: totalAverageTop }}
+              title={`Média total ${minutesToHHMM(Math.round(totalAverageWorked))}`}
+            />
+          )}
+          {chart.days.map((day) => {
+            const workedHeight = `${Math.max(5, (day.worked / chartMaxMinutes) * 100)}%`
+            const active = day.iso === selectedDate || day.iso === today
+            return (
+              <div
+                key={day.iso}
+                data-day-iso={day.iso}
+                className={cn(
+                  "group/homebar flex min-w-5 flex-1 flex-col items-center gap-1 rounded-md px-0.5 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-primary/5 hover:shadow-sm",
+                  active && "bg-primary/10",
+                )}
+              >
+                <div className="flex h-36 w-full items-end justify-center sm:h-48">
+                  <span
+                    className={cn(
+                      "w-3 origin-bottom rounded-t transition-all duration-500 group-hover/homebar:scale-y-105",
+                      chartBarClass(day),
+                      active && "ring-2 ring-primary ring-offset-1 ring-offset-background",
+                      day.future && "opacity-30",
+                    )}
+                    style={{ height: workedHeight }}
+                    title={day.bankable ? `Trabalhado ${minutesToHHMM(day.worked)}` : "Sem banco"}
+                  />
+                </div>
+                <span className="text-[9px] text-muted-foreground">{day.day}</span>
               </div>
-              <span className="text-[9px] text-muted-foreground">{day.day}</span>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground">
@@ -424,6 +433,20 @@ function MonthOverview({ chart, selectedDate, totalAverageWorked }) {
       </div>
     </Card>
   )
+}
+
+function scrollChartToToday(container, days) {
+  const today = todayISO()
+  if (!container || !days.some((day) => day.iso === today)) return
+
+  window.requestAnimationFrame(() => {
+    const target = container.querySelector(`[data-day-iso="${today}"]`)
+    if (!target) return
+
+    const targetCenter = target.offsetLeft + target.offsetWidth / 2
+    const nextScroll = Math.max(0, targetCenter - container.clientWidth / 2)
+    container.scrollTo({ left: nextScroll, behavior: "smooth" })
+  })
 }
 
 function chartBarClass(day) {

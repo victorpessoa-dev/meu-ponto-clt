@@ -10,6 +10,9 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { PasswordField } from "@/components/password-field"
 
+const MAX_LOGIN_ATTEMPTS = 5
+const MAX_RESET_REQUESTS = 3
+
 export function LoginScreen({ onSuccess }) {
   const { login, requestPasswordReset } = useAuth()
   const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL
@@ -21,21 +24,43 @@ export function LoginScreen({ onSuccess }) {
   const [message, setMessage] = useState(null)
   const [loading, setLoading] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
+  const [loginAttempts, setLoginAttempts] = useState(0)
+  const [resetRequests, setResetRequests] = useState(0)
+  const loginBlocked = loginAttempts >= MAX_LOGIN_ATTEMPTS
+  const resetBlocked = resetRequests >= MAX_RESET_REQUESTS
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
     setMessage(null)
+    if (loginBlocked) {
+      setError("Muitas tentativas incorretas. Recarregue a página ou redefina sua senha.")
+      return
+    }
     setLoading(true)
     const res = await login(email.trim(), password)
     setLoading(false)
-    if (res?.error) setError(res.error)
-    else onSuccess?.()
+    if (res?.error) {
+      const nextAttempts = loginAttempts + 1
+      setLoginAttempts(nextAttempts)
+      setError(
+        nextAttempts >= MAX_LOGIN_ATTEMPTS
+          ? "Muitas tentativas incorretas. Recarregue a página ou redefina sua senha."
+          : `${res.error} Tentativa ${nextAttempts}/${MAX_LOGIN_ATTEMPTS}.`,
+      )
+    } else {
+      setLoginAttempts(0)
+      onSuccess?.()
+    }
   }
 
   async function handlePasswordReset() {
     setError(null)
     setMessage(null)
+    if (resetBlocked) {
+      setError("Limite de solicitações atingido nesta página. Recarregue para tentar novamente.")
+      return
+    }
     setResetLoading(true)
     const res = await requestPasswordReset(email)
     setResetLoading(false)
@@ -45,6 +70,7 @@ export function LoginScreen({ onSuccess }) {
       return
     }
 
+    setResetRequests((current) => current + 1)
     setMessage("Enviamos um link para redefinir sua senha. Abra o e-mail e continue por la.")
   }
 
@@ -88,7 +114,7 @@ export function LoginScreen({ onSuccess }) {
                 <button
                   type="button"
                   onClick={handlePasswordReset}
-                  disabled={resetLoading}
+                  disabled={resetLoading || resetBlocked}
                   className="self-end text-xs font-semibold text-primary underline-offset-2 transition-all duration-200 hover:-translate-y-0.5 hover:underline disabled:pointer-events-none disabled:opacity-60"
                 >
                   {resetLoading ? "Enviando..." : "Esqueci minha senha"}
@@ -107,7 +133,7 @@ export function LoginScreen({ onSuccess }) {
                 </div>
               )}
 
-              <Button type="submit" className="mt-1 h-11 w-full text-base" disabled={loading}>
+              <Button type="submit" className="mt-1 h-11 w-full text-base" disabled={loading || loginBlocked}>
                 {loading ? "Entrando..." : "Entrar"}
               </Button>
 

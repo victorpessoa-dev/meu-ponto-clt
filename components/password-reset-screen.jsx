@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { CheckCircle2, Clock, KeyRound, TriangleAlert } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -13,6 +13,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { PasswordField } from "@/components/password-field"
 
+const PAGE_ACTIVE_LIMIT_MS = 10 * 60 * 1000
+const MAX_LINK_ATTEMPTS = 3
+const MAX_PASSWORD_ATTEMPTS = 3
+
 export function PasswordResetScreen() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -24,7 +28,24 @@ export function PasswordResetScreen() {
   const [error, setError] = useState(null)
   const [done, setDone] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [expired, setExpired] = useState(false)
+  const [passwordAttempts, setPasswordAttempts] = useState(0)
+  const redirectTimerRef = useRef(null)
   const passwordChecks = getPasswordChecks(password)
+
+  useEffect(() => {
+    const expiryTimer = window.setTimeout(() => {
+      setExpired(true)
+      setReady(false)
+      setChecking(false)
+      setError("Esta página ficou aberta por muito tempo. Solicite uma nova redefinição de senha.")
+    }, PAGE_ACTIVE_LIMIT_MS)
+
+    return () => {
+      window.clearTimeout(expiryTimer)
+      if (redirectTimerRef.current) window.clearTimeout(redirectTimerRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -34,13 +55,24 @@ export function PasswordResetScreen() {
       setError(null)
 
       if (code) {
+        const attemptKey = `password-reset-attempts:${code}`
+        const attempts = Number(window.sessionStorage.getItem(attemptKey) || "0")
+        if (attempts >= MAX_LINK_ATTEMPTS) {
+          setError("Limite de tentativas atingido para este link. Solicite uma nova redefinição de senha.")
+          setReady(false)
+          setChecking(false)
+          return
+        }
+
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
         if (exchangeError && !cancelled) {
+          window.sessionStorage.setItem(attemptKey, String(attempts + 1))
           setError(exchangeError.message || "Nao foi possivel validar o link de redefinicao.")
           setReady(false)
           setChecking(false)
           return
         }
+        window.sessionStorage.removeItem(attemptKey)
       }
 
       const { data } = await supabase.auth.getSession()
@@ -62,14 +94,31 @@ export function PasswordResetScreen() {
     e.preventDefault()
     setError(null)
 
+    if (expired || passwordAttempts >= MAX_PASSWORD_ATTEMPTS) {
+      setReady(false)
+      setError("Limite de tempo ou tentativas atingido. Solicite uma nova redefinição de senha.")
+      return
+    }
+
+    function registerWrongAttempt(message) {
+      const nextAttempts = passwordAttempts + 1
+      setPasswordAttempts(nextAttempts)
+      if (nextAttempts >= MAX_PASSWORD_ATTEMPTS) {
+        setReady(false)
+        setError("Limite de tentativas atingido. Solicite uma nova redefinição de senha.")
+      } else {
+        setError(`${message} Tentativa ${nextAttempts}/${MAX_PASSWORD_ATTEMPTS}.`)
+      }
+    }
+
     const passwordError = validateStrongPassword(password)
     if (passwordError) {
-      setError(passwordError)
+      registerWrongAttempt(passwordError)
       return
     }
 
     if (password !== confirm) {
-      setError("As senhas nao coincidem.")
+      registerWrongAttempt("As senhas nao coincidem.")
       return
     }
 
@@ -78,14 +127,14 @@ export function PasswordResetScreen() {
     setLoading(false)
 
     if (res?.error) {
-      setError(res.error)
+      registerWrongAttempt(res.error)
       return
     }
 
     setPassword("")
     setConfirm("")
     setDone(true)
-    window.setTimeout(() => router.replace("/login?senhaAlterada=1"), 2500)
+    redirectTimerRef.current = window.setTimeout(() => router.replace("/login?senhaAlterada=1"), 2500)
   }
 
   const Icon = done ? CheckCircle2 : checking ? Clock : ready ? KeyRound : TriangleAlert
@@ -121,7 +170,7 @@ export function PasswordResetScreen() {
               </div>
             )}
 
-            {!checking && !done && ready && (
+            {!checking && !done && ready && !expired && (
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                 <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs leading-5 text-muted-foreground">
                   Informe uma nova senha forte para finalizar a redefinicao.
@@ -171,13 +220,13 @@ export function PasswordResetScreen() {
                   </p>
                 )}
 
-                <Button type="submit" className="h-11 w-full text-base" disabled={loading}>
+                <Button type="submit" className="h-11 w-full text-base" disabled={loading || passwordAttempts >= MAX_PASSWORD_ATTEMPTS}>
                   {loading ? "Salvando..." : "Salvar nova senha"}
                 </Button>
               </form>
             )}
 
-            {!checking && !done && !ready && (
+            {!checking && !done && (!ready || expired) && (
               <div className="flex flex-col gap-4 text-center">
                 <p className="rounded-md border border-chart-3/30 bg-chart-3/10 px-3 py-2 text-sm text-chart-3" role="alert">
                   {error || "Link invalido ou expirado."}
