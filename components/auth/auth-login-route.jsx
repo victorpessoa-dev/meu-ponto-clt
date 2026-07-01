@@ -2,9 +2,9 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/lib/auth-context"
-import { LoginScreen } from "@/components/login-screen"
-import { SplashScreen } from "@/components/splash-screen"
+import { useAuth } from "@/lib/auth/auth-context"
+import { LoginScreen } from "@/components/auth/login-screen"
+import { SplashScreen } from "@/components/app/splash-screen"
 
 export function AuthLoginRoute() {
   const { user, ready } = useAuth()

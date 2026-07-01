@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useState } from "react"
 import {
@@ -19,7 +19,7 @@ import {
   Upload,
   UserCog,
 } from "lucide-react"
-import { useAuth, useStoreData } from "@/lib/auth-context"
+import { useAuth, useStoreData } from "@/lib/auth/auth-context"
 import {
   deleteJustification,
   getJustifications,
@@ -27,14 +27,14 @@ import {
   importRecords,
   saveJustification,
   updateUser,
-} from "@/lib/store"
-import { currentTimeWithSeconds, friendlyDate, parseISODate, todayISO, toISODate } from "@/lib/time-utils"
-import { DEFAULT_PUNCH_FIELDS, JUSTIFICATION_LABELS } from "@/lib/types"
-import { calculateAge, isAdult } from "@/lib/profile-utils"
-import { normalizeEmail, validateEmail, validateStrongPassword } from "@/lib/security-utils"
-import { recordsToRows, rowsToRecords } from "@/lib/xlsx-utils"
-import { cn } from "@/lib/utils"
-import { AvatarPicker, UserAvatar } from "@/components/avatar-picker"
+} from "@/lib/data/store"
+import { currentTimeWithSeconds, friendlyDate, parseISODate, todayISO, toISODate } from "@/lib/time/time-utils"
+import { DEFAULT_PUNCH_FIELDS, JUSTIFICATION_LABELS } from "@/lib/data/types"
+import { calculateAge, isAdult } from "@/lib/profile/profile-utils"
+import { normalizeEmail, validateEmail, validateStrongPassword } from "@/lib/auth/security-utils"
+import { recordsToRows, rowsToRecords } from "@/lib/files/xlsx-utils"
+import { cn } from "@/lib/utils/utils"
+import { AvatarPicker, UserAvatar } from "@/components/settings/avatar-picker"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -59,8 +59,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { PasswordField } from "@/components/password-field"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { PasswordField } from "@/components/auth/password-field"
+import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { toast } from "sonner"
 
 const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
-import { getSiteUrl, parseRegisterPayload, profileRowFromRegister } from "@/lib/auth-utils"
-import { checkRateLimit, requestKey } from "@/lib/server-rate-limit"
-import { getSupabaseAdmin } from "@/lib/supabase-admin"
-import { getSupabaseAuthServer } from "@/lib/supabase-auth-server"
+import { getSiteUrl, parseRegisterPayload, profileRowFromRegister } from "@/lib/auth/auth-utils"
+import { checkRateLimit, requestKey } from "@/lib/auth/server-rate-limit"
+import { getSupabaseAdmin } from "@/lib/supabase/supabase-admin"
+import { getSupabaseAuthServer } from "@/lib/supabase/supabase-auth-server"
 
 export const runtime = "nodejs"
 

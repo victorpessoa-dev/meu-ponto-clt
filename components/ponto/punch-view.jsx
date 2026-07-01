@@ -1,8 +1,8 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { BarChart3, ChevronLeft, ChevronRight, DoorOpen, LogIn, LogOut, Coffee, Utensils, Check } from "lucide-react"
-import { useAuth, useStoreData } from "@/lib/auth-context"
+import { useAuth, useStoreData } from "@/lib/auth/auth-context"
 import {
   getJustification,
   getJustifications,
@@ -11,7 +11,7 @@ import {
   getRecord,
   getRecords,
   punch,
-} from "@/lib/store"
+} from "@/lib/data/store"
 import {
   activeWorkedMinutes,
   bankMetrics,
@@ -23,9 +23,9 @@ import {
   toISODate,
   todayISO,
   parseISODate,
-} from "@/lib/time-utils"
-import { JUSTIFICATION_LABELS } from "@/lib/types"
-import { cn } from "@/lib/utils"
+} from "@/lib/time/time-utils"
+import { JUSTIFICATION_LABELS } from "@/lib/data/types"
+import { cn } from "@/lib/utils/utils"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { toast } from "sonner"
@@ -210,7 +210,7 @@ export function PunchView() {
       {isToday && (
         <div className="rounded-2xl border border-border/80 bg-card/80 px-4 py-5 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <p className="text-xs font-medium uppercase text-primary/80">Relógio da empresa</p>
-          <p className="mt-1 font-mono text-3xl font-bold leading-none tabular-nums text-primary">{clockNow}</p>
+          <p className="mt-1 font-mono text-4xl font-bold leading-none tabular-nums text-primary">{clockNow}</p>
         </div>
       )}
 

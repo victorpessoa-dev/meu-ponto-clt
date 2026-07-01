@@ -1,5 +1,5 @@
-import { AuthProvider } from "@/lib/auth-context"
-import { AuthRegisterRoute } from "@/components/auth-register-route"
+import { AuthProvider } from "@/lib/auth/auth-context"
+import { AuthRegisterRoute } from "@/components/auth/auth-register-route"
 
 export const metadata = {
   title: "Cadastro",

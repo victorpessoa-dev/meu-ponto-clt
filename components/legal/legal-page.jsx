@@ -2,7 +2,7 @@ import Link from "next/link"
 import { ArrowLeft, Clock, FileCheck2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { legalUpdatedAt } from "@/lib/legal-content"
+import { legalUpdatedAt } from "@/lib/legal/legal-content"
 
 export function LegalPage({ badge, title, description, sections, notice }) {
   return (

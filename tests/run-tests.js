@@ -7,8 +7,8 @@ import {
   minutesToHHMM,
   timeToMinutes,
   workedMinutes,
-} from "../lib/time-utils.js"
-import { getPasswordChecks, normalizeEmail, validateEmail, validateStrongPassword } from "../lib/security-utils.js"
+} from "../lib/time/time-utils.js"
+import { getPasswordChecks, normalizeEmail, validateEmail, validateStrongPassword } from "../lib/auth/security-utils.js"
 
 const tests = []
 

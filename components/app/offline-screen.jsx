@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { RefreshCw, WifiOff } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils/utils"
 
 export function OfflineScreen() {
   return (

@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Clock, LockKeyhole, SearchX } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils/utils"
 
 const COPY = {
   restricted: {

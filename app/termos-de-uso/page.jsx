@@ -1,5 +1,5 @@
-import { LegalPage } from "@/components/legal-page"
-import { termsSections } from "@/lib/legal-content"
+import { LegalPage } from "@/components/legal/legal-page"
+import { termsSections } from "@/lib/legal/legal-content"
 
 export const metadata = {
   title: "Termos de Uso",

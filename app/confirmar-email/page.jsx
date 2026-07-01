@@ -1,5 +1,5 @@
 import { Suspense } from "react"
-import { EmailConfirmationScreen } from "@/components/email-confirmation-screen"
+import { EmailConfirmationScreen } from "@/components/auth/email-confirmation-screen"
 
 export const metadata = {
   title: "Confirmar e-mail",
