@@ -5,7 +5,9 @@ import { BarChart3, ChevronLeft, ChevronRight, EyeOff, Save, Table2 } from "luci
 import { useAuth, useStoreData } from "@/lib/auth-context"
 import { adjustRecord, getJustifications, getMonthJustifications, getMonthRecords, getRecords } from "@/lib/store"
 import {
+  activeWorkedMinutes,
   bankMetrics,
+  currentTime,
   minutesToHHMM,
   monthName,
   scheduleSummary,
@@ -44,6 +46,7 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
   const [editDate, setEditDate] = useState(null)
   const [editValues, setEditValues] = useState({ entry: "", breakTime: "", returnTime: "", exit: "" })
   const [confirmSaveOpen, setConfirmSaveOpen] = useState(false)
+  const [activeTime, setActiveTime] = useState(currentTime(user?.clockOffsetSeconds ?? (user?.clockOffsetMinutes ?? 0) * 60))
 
   useEffect(() => {
     if (!cursorOverride) return
@@ -61,6 +64,28 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
   )
   const schedule = user?.schedule ?? []
 
+  useEffect(() => {
+    const hasOpenToday = records.some((record) => record.date === todayISO() && record.entry && !record.exit)
+    if (!hasOpenToday) return
+
+    const offset = user?.clockOffsetSeconds ?? (user?.clockOffsetMinutes ?? 0) * 60
+    const update = () => setActiveTime(currentTime(offset))
+    update()
+
+    let intervalId
+    const nowDate = new Date()
+    const msToNextMinute = (60 - nowDate.getSeconds()) * 1000 - nowDate.getMilliseconds()
+    const timeoutId = window.setTimeout(() => {
+      update()
+      intervalId = window.setInterval(update, 60_000)
+    }, msToNextMinute)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+      if (intervalId) window.clearInterval(intervalId)
+    }
+  }, [records, user?.clockOffsetMinutes, user?.clockOffsetSeconds])
+
   const { dayMetrics, maxChartMinutes, averageWorked, monthSummary } = useMemo(() => {
     const recordsByDate = new Map(records.map((record) => [record.date, record]))
     const justByDate = new Map(justifications.map((justification) => [justification.date, justification]))
@@ -70,32 +95,38 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
       const rec = recordsByDate.get(iso)
       const just = justByDate.get(iso)
       const metrics = bankMetrics(iso, rec, schedule, just)
+      const activeOpen = iso === todayISO() && !!rec?.entry && !metrics.closed
+      const displayWorked = activeOpen ? activeWorkedMinutes(rec, activeTime) : metrics.worked
       return {
         iso,
         rec,
         just,
         ...metrics,
+        worked: displayWorked,
+        bankWorked: metrics.worked,
+        activeOpen,
         weekend: [0, 6].includes(parseISODate(iso).getDay()),
       }
     })
 
     const bankable = metrics.filter((day) => day.bankable)
+    const workedDays = metrics.filter((day) => day.bankable || day.activeOpen)
 
     return {
       dayMetrics: metrics,
-      maxChartMinutes: Math.max(60, ...metrics.map((day) => day.worked)),
-      averageWorked: bankable.length > 0 ? bankable.reduce((total, day) => total + day.worked, 0) / bankable.length : 0,
-      monthSummary: bankable.reduce(
+      maxChartMinutes: Math.max(60, ...metrics.map((day) => Math.max(day.worked, day.expected))),
+      averageWorked: workedDays.length > 0 ? workedDays.reduce((total, day) => total + day.worked, 0) / workedDays.length : 0,
+      monthSummary: workedDays.reduce(
         (acc, day) => {
           acc.worked += day.worked
-          acc.balance += day.balance
+          if (day.bankable) acc.balance += day.balance
           acc.days += 1
           return acc
         },
         { worked: 0, balance: 0, days: 0 },
       ),
     }
-  }, [cursor.month, cursor.year, justifications, records, schedule])
+  }, [activeTime, cursor.month, cursor.year, justifications, records, schedule])
 
   const totalSummary = useMemo(
     () => buildTotalSummary(allRecords, allJustifications, schedule),
@@ -474,6 +505,7 @@ function ChartLegend() {
     ["bg-primary/45", "Folga"],
     ["bg-chart-3", "Justificado"],
     ["bg-chart-5", "Feriado"],
+    ["bg-chart-6", "Em andamento"],
     ["border-chart-3/80", "Média mês"],
   ]
 
@@ -526,6 +558,7 @@ function chartBarClass(day) {
   if (["justificada", "abono", "atestado"].includes(day.just?.type)) return "bg-chart-3"
   if (day.just?.type === "ferias") return "bg-positive/60"
   if (day.just?.type === "falta") return "bg-negative"
+  if (day.activeOpen) return "bg-chart-6"
   if (!day.bankable) return "bg-muted"
   return day.balance >= 0 ? "bg-positive" : "bg-negative"
 }

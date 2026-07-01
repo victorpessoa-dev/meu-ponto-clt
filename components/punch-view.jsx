@@ -15,6 +15,7 @@ import {
 import {
   activeWorkedMinutes,
   bankMetrics,
+  currentTime,
   currentTimeWithSeconds,
   friendlyDate,
   minutesToHHMM,
@@ -67,7 +68,10 @@ function punchOrderMessage(nextFields) {
 export function PunchView() {
   const { user } = useAuth()
   const [date, setDate] = useState(todayISO())
-  const [now, setNow] = useState(currentTimeWithSeconds(user?.clockOffsetSeconds ?? (user?.clockOffsetMinutes ?? 0) * 60))
+  const [clockNow, setClockNow] = useState(
+    currentTimeWithSeconds(user?.clockOffsetSeconds ?? (user?.clockOffsetMinutes ?? 0) * 60),
+  )
+  const [workNow, setWorkNow] = useState(currentTime(user?.clockOffsetSeconds ?? (user?.clockOffsetMinutes ?? 0) * 60))
   const today = todayISO()
   const isToday = date === today
   const dayIndex = parseISODate(date).getDay()
@@ -75,9 +79,9 @@ export function PunchView() {
   useEffect(() => {
     if (!isToday) return
     const offset = user?.clockOffsetSeconds ?? (user?.clockOffsetMinutes ?? 0) * 60
-    setNow(currentTimeWithSeconds(offset))
-    const id = setInterval(() => setNow(currentTimeWithSeconds(offset)), 1_000)
-    return () => clearInterval(id)
+    setClockNow(currentTimeWithSeconds(offset))
+    const id = window.setInterval(() => setClockNow(currentTimeWithSeconds(offset)), 1_000)
+    return () => window.clearInterval(id)
   }, [isToday, user?.clockOffsetMinutes, user?.clockOffsetSeconds])
 
   const record = useStoreData(() => (user ? getRecord(user.id, date) : undefined))
@@ -96,16 +100,37 @@ export function PunchView() {
   const schedule = user?.schedule ?? []
   const metrics = bankMetrics(date, record, schedule, justification)
   const { worked, expected, balance } = metrics
-  const activeWorked = activeWorkedMinutes(record, now)
   const hasEntry = !!record?.entry
   const hasAnyPunch = !!(record?.entry || record?.breakTime || record?.returnTime || record?.exit)
   const isClosed = metrics.closed
   const configuredKeys = Array.isArray(user?.punchFields?.[dayIndex]) ? user.punchFields[dayIndex] : FULL_DAY_KEYS
   const activeFields = FIELDS.filter((f) => configuredKeys.includes(f.key))
   const nextFields = nextAllowedFields(record, activeFields.map((field) => field.key))
+  const showDayBalance = isClosed && metrics.bankable
+  const activeWorked = hasEntry ? activeWorkedMinutes(record, workNow) : 0
+
+  useEffect(() => {
+    if (!isToday || !hasEntry || isClosed) return
+    const offset = user?.clockOffsetSeconds ?? (user?.clockOffsetMinutes ?? 0) * 60
+    const update = () => setWorkNow(currentTime(offset))
+    update()
+
+    let intervalId
+    const nowDate = new Date()
+    const msToNextMinute = (60 - nowDate.getSeconds()) * 1000 - nowDate.getMilliseconds()
+    const timeoutId = window.setTimeout(() => {
+      update()
+      intervalId = window.setInterval(update, 60_000)
+    }, msToNextMinute)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+      if (intervalId) window.clearInterval(intervalId)
+    }
+  }, [hasEntry, isClosed, isToday, user?.clockOffsetMinutes, user?.clockOffsetSeconds])
   const monthChart = useMemo(
-    () => buildMonthChart(date, monthRecords, monthJustifications, schedule),
-    [date, monthJustifications, monthRecords, schedule],
+    () => buildMonthChart(date, monthRecords, monthJustifications, schedule, workNow),
+    [date, monthJustifications, monthRecords, schedule, workNow],
   )
   const totalAverageWorked = useMemo(
     () => buildAverageWorked(allRecords, allJustifications, schedule),
@@ -185,7 +210,7 @@ export function PunchView() {
       {isToday && (
         <div className="rounded-2xl border border-border/80 bg-card/80 px-4 py-5 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <p className="text-xs font-medium uppercase text-primary/80">Relógio da empresa</p>
-          <p className="mt-1 font-mono text-3xl font-bold leading-none tabular-nums text-primary">{now}</p>
+          <p className="mt-1 font-mono text-3xl font-bold leading-none tabular-nums text-primary">{clockNow}</p>
         </div>
       )}
 
@@ -193,7 +218,7 @@ export function PunchView() {
         <div className="grid grid-cols-3 divide-x divide-border">
           <DaySummary label={isClosed ? "Trabalhado" : "Trabalhando"} value={hasEntry ? minutesToHHMM(activeWorked) : "--:--"} tone={!isClosed && hasEntry ? "active" : "default"} />
           <DaySummary label="Jornada" value={expected > 0 ? minutesToHHMM(expected) : "Folga"} />
-          <DaySummary label="Saldo" value={metrics.bankable ? minutesToHHMM(balance) : "--:--"} tone={!metrics.bankable ? "muted" : balance >= 0 ? "positive" : "negative"} />
+          <DaySummary label="Saldo" value={showDayBalance ? minutesToHHMM(balance) : "--:--"} tone={!showDayBalance ? "muted" : balance >= 0 ? "positive" : "negative"} />
         </div>
       </Card>
 
@@ -274,13 +299,12 @@ export function PunchView() {
         </p>
       )}
 
-      <MonthSummaryCards chart={monthChart} />
       <MonthOverview chart={monthChart} selectedDate={date} totalAverageWorked={totalAverageWorked} />
     </div>
   )
 }
 
-function buildMonthChart(date, records, justifications, schedule) {
+function buildMonthChart(date, records, justifications, schedule, activeTime) {
   const base = parseISODate(date)
   const year = base.getFullYear()
   const month = base.getMonth()
@@ -293,12 +317,16 @@ function buildMonthChart(date, records, justifications, schedule) {
     const record = recordsByDate.get(iso)
     const justification = justByDate.get(iso)
     const metrics = bankMetrics(iso, record, schedule, justification)
+    const activeOpen = iso === today && !!record?.entry && !metrics.closed
+    const displayWorked = activeOpen ? activeWorkedMinutes(record, activeTime) : metrics.worked
     return {
       iso,
       day: String(index + 1).padStart(2, "0"),
-      worked: metrics.worked,
+      worked: displayWorked,
+      bankWorked: metrics.worked,
       closed: metrics.closed,
       bankable: metrics.bankable,
+      activeOpen,
       future: iso > today,
       balance: metrics.balance,
       expected: metrics.expected,
@@ -307,10 +335,11 @@ function buildMonthChart(date, records, justifications, schedule) {
   })
 
   const bankableDays = days.filter((day) => day.bankable)
-  const totalWorked = bankableDays.reduce((total, day) => total + day.worked, 0)
+  const workedDays = days.filter((day) => day.bankable || day.activeOpen)
+  const totalWorked = workedDays.reduce((total, day) => total + day.worked, 0)
   const totalBalance = bankableDays.reduce((total, day) => total + day.balance, 0)
-  const averageWorked = bankableDays.length > 0 ? totalWorked / bankableDays.length : 0
-  const maxMinutes = Math.max(60, ...days.map((day) => day.worked))
+  const averageWorked = workedDays.length > 0 ? totalWorked / workedDays.length : 0
+  const maxMinutes = Math.max(60, ...days.map((day) => Math.max(day.worked, day.expected)))
 
   return {
     label: `${monthName(month)} de ${year}`,
@@ -318,7 +347,8 @@ function buildMonthChart(date, records, justifications, schedule) {
     totalWorked,
     totalBalance,
     averageWorked,
-    closedCount: bankableDays.length,
+    closedCount: workedDays.length,
+    bankableCount: bankableDays.length,
     maxMinutes,
   }
 }
@@ -331,20 +361,6 @@ function buildAverageWorked(records, justifications, schedule) {
 
   if (bankable.length === 0) return 0
   return bankable.reduce((total, metrics) => total + metrics.worked, 0) / bankable.length
-}
-
-function MonthSummaryCards({ chart }) {
-  return (
-    <div className="grid grid-cols-3 gap-3 sm:gap-3.5">
-      <MiniMetric label="Trabalhado" value={minutesToHHMM(chart.totalWorked)} />
-      <MiniMetric label="Dias" value={String(chart.closedCount)} />
-      <MiniMetric
-        label="Banco mensal"
-        value={minutesToHHMM(chart.totalBalance)}
-        tone={chart.totalBalance >= 0 ? "positive" : "negative"}
-      />
-    </div>
-  )
 }
 
 function MonthOverview({ chart, selectedDate, totalAverageWorked }) {
@@ -441,6 +457,10 @@ function MonthOverview({ chart, selectedDate, totalAverageWorked }) {
           Feriado
         </span>
         <span className="inline-flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-chart-6" />
+          Em andamento
+        </span>
+        <span className="inline-flex items-center gap-1">
           <span className="h-px w-3 border-t border-dashed border-primary/70" />
           Média total
         </span>
@@ -467,26 +487,9 @@ function chartBarClass(day) {
   if (["justificada", "abono", "atestado"].includes(day.just?.type)) return "bg-chart-3"
   if (day.just?.type === "ferias") return "bg-positive/60"
   if (day.just?.type === "falta") return "bg-negative"
+  if (day.activeOpen) return "bg-chart-6"
   if (!day.bankable) return "bg-muted"
   return day.balance >= 0 ? "bg-positive" : "bg-negative"
-}
-
-function MiniMetric({ label, value, tone = "default" }) {
-  return (
-    <div className="rounded-2xl border border-border/80 bg-card/90 px-2 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-200 ease-out hover:border-primary/30 hover:bg-accent/35 hover:shadow-[0_12px_30px_rgba(15,23,42,0.06)] sm:px-3 sm:py-5 dark:hover:shadow-none">
-      <span className="block text-center text-[9px] font-medium uppercase tracking-wide text-primary/80 sm:text-[10px]">{label}</span>
-      <p
-        className={cn(
-          "mt-1 text-center font-mono text-base font-bold tabular-nums sm:text-lg",
-          tone === "default" && "text-foreground",
-          tone === "positive" && "text-positive",
-          tone === "negative" && "text-negative",
-        )}
-      >
-        {value}
-      </p>
-    </div>
-  )
 }
 
 function punchCardClass({ tone, value, canPunch }) {

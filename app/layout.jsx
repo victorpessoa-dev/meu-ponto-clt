@@ -2,6 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { Manrope } from 'next/font/google'
 import './globals.css'
 import { OpeningSplash } from '@/components/splash-screen'
+import { ConnectionStatus } from '@/components/connection-status'
 import { ServiceWorkerRegister } from '@/components/sw-register'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
@@ -75,6 +76,7 @@ export default function RootLayout({ children }) {
           <OpeningSplash />
           <ServiceWorkerRegister />
           <Toaster position="top-center" />
+          <ConnectionStatus />
           {process.env.NODE_ENV === 'production' && <Analytics />}
         </ThemeProvider>
       </body>
