@@ -1,7 +1,7 @@
 ﻿"use client"
 
 import { useState } from "react"
-import { CalendarDays, Clock, LogOut, Settings, Users } from "lucide-react"
+import { CalendarDays, Clock, LogOut, Settings } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
 import {
@@ -16,7 +16,6 @@ import {
 import { PunchView } from "@/components/punch-view"
 import { ReportView } from "@/components/report-view"
 import { SettingsView } from "@/components/settings-view"
-import { AdminView } from "@/components/admin-view"
 import { UserAvatar } from "@/components/avatar-picker"
 
 const TAB_THEMES = {
@@ -38,12 +37,6 @@ const TAB_THEMES = {
     nav: "border-primary/15 bg-white",
     active: "text-primary",
   },
-  admin: {
-    page: "bg-primary/5",
-    header: "border-primary/20 bg-primary text-primary-foreground",
-    nav: "border-primary/15 bg-white",
-    active: "text-primary",
-  },
 }
 
 export function AppShell() {
@@ -58,7 +51,6 @@ export function AppShell() {
     { key: "ponto", label: "Ponto", icon: Clock, show: true },
     { key: "relatorio", label: "Relatório", icon: CalendarDays, show: true },
     { key: "config", label: "Ajustes", icon: Settings, show: true },
-    { key: "admin", label: "Usuários", icon: Users, show: user.isAdmin },
   ]
 
   return (
@@ -117,7 +109,6 @@ export function AppShell() {
             }}
           />
         )}
-        {tab === "admin" && user.isAdmin && <AdminView />}
       </main>
 
       <nav className={cn("fixed inset-x-0 bottom-0 z-20 border-t pb-safe shadow-[0_-6px_18px_rgba(15,23,42,0.06)] transition-colors duration-300", theme.nav)}>

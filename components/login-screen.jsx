@@ -83,8 +83,6 @@ export function LoginScreen({ onSuccess }) {
             <Clock className="h-8 w-8 text-primary-foreground" strokeWidth={2.25} />
           </div>
           <h1 className="mt-4 text-2xl font-bold tracking-tight text-primary-foreground">Meu Ponto CLT</h1>
-          <p className="mt-1 text-sm text-primary-foreground/70">Controle de jornada de trabalho</p>
-          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-foreground/55">Virtus Soft</p>
         </div>
 
         <Card className="border-0 shadow-xl">
@@ -158,6 +156,10 @@ export function LoginScreen({ onSuccess }) {
             </form>
           </CardContent>
         </Card>
+
+        <p className="mt-5 text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-primary-foreground/58">
+          Virtus Soft
+        </p>
 
         {showDemoLogin && (
           <div className="mt-6 rounded-lg bg-primary-foreground/10 px-4 py-3 text-center text-xs leading-relaxed text-primary-foreground/70">

@@ -114,7 +114,6 @@ export function RegisterScreen() {
             <Clock className="h-8 w-8 text-primary-foreground" strokeWidth={2.25} />
           </div>
           <h1 className="mt-4 text-2xl font-bold tracking-tight text-primary-foreground">Criar cadastro</h1>
-          <p className="mt-1 text-sm text-primary-foreground/70">Monte seu perfil de jornada</p>
         </div>
 
         <Card className="border-0 shadow-xl">
@@ -335,6 +334,10 @@ export function RegisterScreen() {
             </form>
           </CardContent>
         </Card>
+
+        <p className="mt-5 text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-primary-foreground/58">
+          Virtus Soft
+        </p>
       </div>
     </main>
   )

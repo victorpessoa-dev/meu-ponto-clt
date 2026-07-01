@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server"
 import { getSiteUrl, normalizeEmail, validateEmail } from "@/lib/auth-utils"
-import { sendEmail } from "@/lib/email-service"
 import { checkRateLimit, requestKey } from "@/lib/server-rate-limit"
-import { getSupabaseAdmin } from "@/lib/supabase-admin"
+import { getSupabaseAuthServer } from "@/lib/supabase-auth-server"
 
 export const runtime = "nodejs"
 
@@ -21,27 +20,14 @@ export async function POST(request) {
       )
     }
 
-    const supabaseAdmin = getSupabaseAdmin()
-    // O link de recovery e gerado no servidor e enviado por e-mail personalizado, sem expor a Service Role ao cliente.
-    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-      type: "recovery",
-      email,
-      options: { redirectTo: `${getSiteUrl(request)}/redefinir-senha` },
+    const supabaseAuth = getSupabaseAuthServer()
+
+    // resetPasswordForEmail dispara o e-mail nativo do Supabase para redefinicao de senha.
+    await supabaseAuth.auth.resetPasswordForEmail(email, {
+      redirectTo: `${getSiteUrl(request)}/redefinir-senha`,
     })
 
-    // Responde ok mesmo quando o e-mail nao existe, evitando revelar quais contas estao cadastradas.
-    if (!error && data?.properties?.action_link) {
-      const sent = await sendEmail({
-        to: email,
-        template: "reset",
-        props: {
-          name: data.user?.user_metadata?.name || data.user?.email?.split("@")[0],
-          actionUrl: data.properties.action_link,
-        },
-      })
-      if (sent.error) return NextResponse.json({ error: sent.error.message || "Nao foi possivel enviar o e-mail." }, { status: 502 })
-    }
-
+    // Resposta generica para nao revelar se o e-mail existe ou nao.
     return NextResponse.json({ ok: true })
   } catch (error) {
     return NextResponse.json({ error: error.message || "Nao foi possivel enviar a redefinicao de senha." }, { status: 500 })

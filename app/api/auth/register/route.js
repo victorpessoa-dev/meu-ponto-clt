@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import { getSiteUrl, parseRegisterPayload, profileRowFromRegister } from "@/lib/auth-utils"
-import { sendEmail } from "@/lib/email-service"
 import { checkRateLimit, requestKey } from "@/lib/server-rate-limit"
 import { getSupabaseAdmin } from "@/lib/supabase-admin"
+import { getSupabaseAuthServer } from "@/lib/supabase-auth-server"
 
 export const runtime = "nodejs"
 
@@ -24,13 +24,14 @@ export async function POST(request) {
       )
     }
 
-    // generateLink com type "signup" cria o usuario pendente e devolve o link que sera enviado pelo Resend.
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: "signup",
+    const supabaseAuth = getSupabaseAuthServer()
+
+    // signUp usa o e-mail nativo configurado no Supabase e mantem a Service Role fora do cliente.
+    const { data: signUpData, error: signUpError } = await supabaseAuth.auth.signUp({
       email: data.email,
       password: data.password,
       options: {
-        redirectTo: `${getSiteUrl(request)}/confirmar-email`,
+        emailRedirectTo: `${getSiteUrl(request)}/confirmar-email`,
         data: {
           name: data.name,
           birth_date: data.birthDate,
@@ -41,39 +42,27 @@ export async function POST(request) {
       },
     })
 
-    if (linkError) {
-      const message = String(linkError.message || "")
-      const duplicate = /already|registered|exists/i.test(message)
+    if (signUpError) {
+      const message = String(signUpError.message || "")
+      const duplicate = /already|registered|exists|user.*exists/i.test(message)
       return NextResponse.json(
         { error: duplicate ? "Este e-mail ja esta cadastrado. Entre pelo login ou use outro e-mail." : message },
         { status: duplicate ? 409 : 400 },
       )
     }
 
-    createdUserId = linkData.user?.id
-    const actionUrl = linkData.properties?.action_link
-    if (!createdUserId || !actionUrl) {
-      return NextResponse.json({ error: "Nao foi possivel gerar o link de confirmacao." }, { status: 500 })
+    createdUserId = signUpData.user?.id
+    if (!createdUserId) {
+      return NextResponse.json({ error: "Nao foi possivel criar sua conta no Supabase." }, { status: 500 })
     }
 
-    // Depois que o Auth existe, salvamos o perfil publico usado pelo app para jornada, funcao e avatar.
+    // O Supabase envia a confirmacao; a Service Role apenas grava o perfil usado pelo app.
     const { error: profileError } = await supabaseAdmin.from("users").upsert(profileRowFromRegister(createdUserId, data))
     if (profileError) throw profileError
 
-    const sent = await sendEmail({
-      to: data.email,
-      template: "confirm",
-      props: {
-        name: data.name,
-        actionUrl,
-      },
-    })
-
-    if (sent.error) throw sent.error
-
     return NextResponse.json({ ok: true, email: data.email })
   } catch (error) {
-    // Se qualquer etapa depois da criacao falhar, remove o usuario para nao deixar conta incompleta.
+    // Se o perfil falhar depois do Auth, remove a conta recem-criada para evitar cadastro incompleto.
     if (createdUserId) await supabaseAdmin.auth.admin.deleteUser(createdUserId).catch(() => {})
     return NextResponse.json({ error: error.message || "Nao foi possivel criar sua conta." }, { status: 500 })
   }

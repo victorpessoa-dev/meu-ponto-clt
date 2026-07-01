@@ -24,7 +24,6 @@ export function SplashScreen({ fixed = false, leaving = false }) {
 
         <div className="mt-5 animate-splash-title">
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Meu Ponto CLT</h1>
-          <p className="mt-2 text-sm text-primary-foreground/68">Controle de jornada de trabalho</p>
         </div>
       </div>
 
