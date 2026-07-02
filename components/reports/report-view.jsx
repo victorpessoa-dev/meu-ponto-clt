@@ -480,7 +480,7 @@ function CalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onShift,
       <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => onShift(-1)} aria-label={`${ariaLabel} anterior`}>
         <ChevronLeft className="h-5 w-5" />
       </Button>
-      <div className="relative h-16 min-w-0 overflow-hidden rounded-2xl bg-muted/65 ring-1 ring-border/70" role="tablist" aria-label={ariaLabel}>
+      <div className="relative h-16 min-w-0 overflow-hidden rounded-2xl bg-transparent ring-1 ring-border/70" role="tablist" aria-label={ariaLabel}>
         <div className="absolute inset-x-0 top-1/2 h-11 -translate-y-1/2">
           {slots.map((slot) => {
             const itemValue = getValue(slot)
@@ -493,13 +493,13 @@ function CalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onShift,
                 aria-selected={active}
                 onClick={() => onChange(itemValue)}
                 className={cn(
-                  "absolute top-0 h-11 rounded-xl border px-3 text-sm font-semibold shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-300 ease-out will-change-transform",
+                  "absolute top-0 h-11 rounded-xl border px-3 text-sm font-semibold transition-all duration-300 ease-out will-change-transform",
                   "focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
                   active && "left-[22%] right-[22%] z-20 border-primary bg-primary text-primary-foreground",
-                  slot === -1 && "left-[-5%] right-[73%] z-10 scale-90 border-border bg-card text-primary opacity-75",
-                  slot === 1 && "left-[73%] right-[-5%] z-10 scale-90 border-border bg-card text-primary opacity-75",
-                  slot === -2 && "left-[-32%] right-[96%] scale-[0.8] border-border bg-card text-primary opacity-25",
-                  slot === 2 && "left-[96%] right-[-32%] scale-[0.8] border-border bg-card text-primary opacity-25",
+                  slot === -1 && "left-[-5%] right-[73%] z-10 scale-90 border-transparent bg-transparent text-primary opacity-75",
+                  slot === 1 && "left-[73%] right-[-5%] z-10 scale-90 border-transparent bg-transparent text-primary opacity-75",
+                  slot === -2 && "left-[-32%] right-[96%] scale-[0.8] border-transparent bg-transparent text-primary opacity-25",
+                  slot === 2 && "left-[96%] right-[-32%] scale-[0.8] border-transparent bg-transparent text-primary opacity-25",
                   className,
                 )}
               >
