@@ -1,5 +1,11 @@
 "use client"
 
+/**
+ * Shell autenticado da aplicacao.
+ *
+ * Orquestra navegacao principal, menu do usuario e transicao entre ponto,
+ * relatorio e ajustes sem recarregar a sessao.
+ */
 import { useState } from "react"
 import { CalendarDays, Clock, LogOut, Settings } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
@@ -40,6 +46,9 @@ const TAB_THEMES = {
   },
 }
 
+/**
+ * Componente raiz exibido apos autenticacao.
+ */
 export function AppShell() {
   const { user, logout } = useAuth()
   const [tab, setTab] = useState("ponto")

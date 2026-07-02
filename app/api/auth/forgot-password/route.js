@@ -1,3 +1,8 @@
+/**
+ * Rota server-side para solicitar redefinicao de senha.
+ *
+ * Aplica rate limit e usa resposta generica para nao revelar se um e-mail esta cadastrado.
+ */
 import { NextResponse } from "next/server"
 import { getSiteUrl, normalizeEmail, validateEmail } from "@/lib/auth/auth-utils"
 import { checkRateLimit, requestKey } from "@/lib/auth/server-rate-limit"
@@ -5,6 +10,9 @@ import { getSupabaseAuthServer } from "@/lib/supabase/supabase-auth-server"
 
 export const runtime = "nodejs"
 
+/**
+ * Dispara o e-mail de recuperacao pelo Supabase Auth.
+ */
 export async function POST(request) {
   try {
     const body = await request.json()

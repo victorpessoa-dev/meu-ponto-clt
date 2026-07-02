@@ -1,9 +1,18 @@
+/**
+ * Layout compartilhado para paginas legais.
+ *
+ * Recebe conteudo estruturado e mantem identidade visual consistente entre privacidade,
+ * termos de uso e compliance.
+ */
 import Link from "next/link"
 import { ArrowLeft, Clock, FileCheck2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { legalUpdatedAt } from "@/lib/legal/legal-content"
 
+/**
+ * Renderiza uma pagina legal a partir de secoes textuais versionadas.
+ */
 export function LegalPage({ badge, title, description, sections, notice }) {
   return (
     <main className="min-h-dvh bg-background pt-safe">

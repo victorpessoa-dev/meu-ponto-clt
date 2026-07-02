@@ -1,10 +1,16 @@
 "use client"
 
+/**
+ * Campo de senha com alternancia de visibilidade.
+ */
 import { useState } from "react"
 import { Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
+/**
+ * Encapsula input de senha para reutilizar acessibilidade e botao de exibir/ocultar.
+ */
 export function PasswordField({ id, value, onChange, autoComplete, placeholder = "********", ...props }) {
   const [visible, setVisible] = useState(false)
   const Icon = visible ? EyeOff : Eye

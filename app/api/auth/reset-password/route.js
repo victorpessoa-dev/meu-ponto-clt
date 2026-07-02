@@ -1,9 +1,17 @@
+/**
+ * Rota server-side para concluir redefinicao de senha.
+ *
+ * Valida a senha nova e confirma o token temporario antes de usar a API admin do Supabase.
+ */
 import { NextResponse } from "next/server"
 import { validateStrongPassword } from "@/lib/auth/auth-utils"
 import { getSupabaseServiceRole } from "@/lib/supabase/supabase-service-role"
 
 export const runtime = "nodejs"
 
+/**
+ * Atualiza a senha do usuario autenticado pelo token de recuperacao.
+ */
 export async function POST(request) {
   try {
     const body = await request.json()

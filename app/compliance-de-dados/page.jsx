@@ -1,3 +1,6 @@
+/**
+ * Pagina publica de checklist de compliance de dados.
+ */
 import { LegalPage } from "@/components/legal/legal-page"
 import { complianceSections } from "@/lib/legal/legal-content"
 
@@ -6,6 +9,9 @@ export const metadata = {
   description: "Checklist de governanca, seguranca e conformidade de dados para operacao do Meu Ponto CLT.",
 }
 
+/**
+ * Renderiza orientacoes operacionais de governanca e LGPD.
+ */
 export default function DataCompliancePage() {
   return (
     <LegalPage

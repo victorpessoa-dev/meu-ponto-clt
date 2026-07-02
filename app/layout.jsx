@@ -1,3 +1,8 @@
+/**
+ * Layout raiz do Next.js.
+ *
+ * Configura fonte, metadados, tema, PWA, toasts, status de conexao e analytics.
+ */
 import { Analytics } from '@vercel/analytics/next'
 import { Manrope } from 'next/font/google'
 import './globals.css'
@@ -67,6 +72,9 @@ export const viewport = {
   viewportFit: 'cover',
 }
 
+/**
+ * Envolve todas as paginas com providers e recursos globais da aplicacao.
+ */
 export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR" className="bg-background" suppressHydrationWarning>

@@ -1,5 +1,11 @@
 "use client"
 
+/**
+ * Tela de confirmacao de e-mail.
+ *
+ * Trata links enviados pelo Supabase, limita reprocessamentos do mesmo codigo
+ * e redireciona para login apos ativar a conta.
+ */
 import { useEffect, useState } from "react"
 import { CheckCircle2, Clock, MailCheck, TriangleAlert } from "lucide-react"
 import Link from "next/link"
@@ -12,6 +18,9 @@ import { cn } from "@/lib/utils/utils"
 const PAGE_ACTIVE_LIMIT_MS = 10 * 60 * 1000
 const MAX_LINK_ATTEMPTS = 3
 
+/**
+ * Componente responsavel por confirmar e-mails de novos cadastros.
+ */
 export function EmailConfirmationScreen() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -28,6 +37,9 @@ export function EmailConfirmationScreen() {
     let cancelled = false
     let timer
 
+    /**
+     * Confirma o codigo do link e encerra qualquer sessao criada durante a troca.
+     */
     async function confirmEmail() {
       const hasTokenHash = typeof window !== "undefined" && window.location.hash.includes("access_token")
       if (!code && !hasTokenHash) return

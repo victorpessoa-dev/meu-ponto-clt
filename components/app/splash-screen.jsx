@@ -1,8 +1,16 @@
 "use client"
 
+/**
+ * Telas de carregamento da aplicacao.
+ *
+ * Usadas durante bootstrap da sessao e na animacao inicial da PWA.
+ */
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils/utils"
 
+/**
+ * Renderiza o splash institucional em modo normal ou overlay fixo.
+ */
 export function SplashScreen({ fixed = false, leaving = false }) {
   const Wrapper = fixed ? "div" : "main"
 
@@ -34,6 +42,9 @@ export function SplashScreen({ fixed = false, leaving = false }) {
   )
 }
 
+/**
+ * Controla a exibicao temporaria do splash de abertura.
+ */
 export function OpeningSplash() {
   const [visible, setVisible] = useState(true)
   const [leaving, setLeaving] = useState(false)

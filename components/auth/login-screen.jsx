@@ -1,5 +1,10 @@
 "use client"
 
+/**
+ * Tela de login.
+ *
+ * Controla tentativas locais, mensagens de erro e solicitacao de redefinicao de senha.
+ */
 import { useState } from "react"
 import { Clock, MailCheck } from "lucide-react"
 import Link from "next/link"
@@ -13,6 +18,9 @@ import { PasswordField } from "@/components/auth/password-field"
 const MAX_LOGIN_ATTEMPTS = 5
 const MAX_RESET_REQUESTS = 3
 
+/**
+ * Componente responsavel pelo fluxo de entrada do usuario.
+ */
 export function LoginScreen({ onSuccess }) {
   const { login, requestPasswordReset } = useAuth()
   const [email, setEmail] = useState("")
@@ -26,6 +34,9 @@ export function LoginScreen({ onSuccess }) {
   const loginBlocked = loginAttempts >= MAX_LOGIN_ATTEMPTS
   const resetBlocked = resetRequests >= MAX_RESET_REQUESTS
 
+  /**
+   * Autentica o usuario e aplica bloqueio local contra tentativas repetidas.
+   */
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
@@ -51,6 +62,9 @@ export function LoginScreen({ onSuccess }) {
     }
   }
 
+  /**
+   * Solicita link de redefinicao respeitando o limite local da tela.
+   */
   async function handlePasswordReset() {
     setError(null)
     setMessage(null)

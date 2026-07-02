@@ -1,3 +1,9 @@
+/**
+ * Rota server-side para cadastro de usuarios.
+ *
+ * Valida entrada, aplica rate limit, cria a conta no Supabase Auth e grava o perfil
+ * usado pela aplicacao sem expor a Service Role ao navegador.
+ */
 import { NextResponse } from "next/server"
 import { getSiteUrl, parseRegisterPayload, profileRowFromRegister } from "@/lib/auth/auth-utils"
 import { checkRateLimit, requestKey } from "@/lib/auth/server-rate-limit"
@@ -6,6 +12,9 @@ import { getSupabaseAuthServer } from "@/lib/supabase/supabase-auth-server"
 
 export const runtime = "nodejs"
 
+/**
+ * Cria um usuario pendente de confirmacao por e-mail.
+ */
 export async function POST(request) {
   const supabaseService = getSupabaseServiceRole()
   let createdUserId = null

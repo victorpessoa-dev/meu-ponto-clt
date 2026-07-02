@@ -1,10 +1,16 @@
 "use client"
 
+/**
+ * Tela exibida quando a PWA nao consegue carregar conteudo online.
+ */
 import Link from "next/link"
 import { RefreshCw, WifiOff } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils/utils"
 
+/**
+ * Oferece acao de recarregar e retorno ao inicio durante falhas de conexao.
+ */
 export function OfflineScreen() {
   return (
     <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-primary px-safe py-8 pt-safe pb-safe sm:py-10">

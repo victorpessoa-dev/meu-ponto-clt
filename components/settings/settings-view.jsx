@@ -1,5 +1,11 @@
 "use client"
 
+/**
+ * Tela de ajustes do usuario.
+ *
+ * Reune perfil, login, jornada, relogio da empresa, justificativas
+ * e importacao/exportacao de planilhas.
+ */
 import { useEffect, useState } from "react"
 import {
   Moon,
@@ -65,6 +71,9 @@ import { toast } from "sonner"
 
 const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 
+/**
+ * Converte a jornada em minutos para horas editaveis na interface.
+ */
 function scheduleToHours(schedule) {
   return Array.from({ length: 7 }, (_, index) => {
     const minutes = Number(schedule?.[index] ?? 0)
@@ -72,12 +81,18 @@ function scheduleToHours(schedule) {
   })
 }
 
+/**
+ * Converte horas digitadas pelo usuario para minutos, aceitando virgula decimal.
+ */
 function hoursToMinutes(value) {
   const hours = Number(String(value).replace(",", "."))
   if (!Number.isFinite(hours) || hours < 0 || hours > 24) return null
   return Math.round(hours * 60)
 }
 
+/**
+ * Componente de abas de configuracao do usuario autenticado.
+ */
 export function SettingsView({ onImportComplete }) {
   const { user } = useAuth()
   if (!user) return null
@@ -103,6 +118,9 @@ export function SettingsView({ onImportComplete }) {
   )
 }
 
+/**
+ * Secao responsavel por perfil, login, jornada, relogio e aparencia.
+ */
 function ProfileSection() {
   const { user, logout } = useAuth()
   const [name, setName] = useState(user.name)
@@ -156,6 +174,9 @@ function ProfileSection() {
     return () => clearInterval(id)
   }, [clockOffsetSeconds])
 
+  /**
+   * Salva dados profissionais depois de aplicar a regra de maioridade.
+   */
   async function saveProfile() {
     if (!name.trim()) {
       toast.error("Informe seu nome.")
@@ -180,6 +201,9 @@ function ProfileSection() {
     return true
   }
 
+  /**
+   * Atualiza e-mail e senha com as mesmas regras usadas no cadastro.
+   */
   async function saveLogin() {
     if (password && password !== confirm) {
       toast.error("As senhas não coincidem.")
@@ -211,6 +235,9 @@ function ProfileSection() {
     return true
   }
 
+  /**
+   * Salva o ajuste do relogio da empresa limitado a uma janela de 12 horas.
+   */
   async function saveClock() {
     const offset = Number(clockOffsetSeconds)
     if (!Number.isFinite(offset) || offset < -43200 || offset > 43200) {
@@ -226,6 +253,9 @@ function ProfileSection() {
     return true
   }
 
+  /**
+   * Salva a jornada semanal e desativa batidas nos dias sem carga horaria.
+   */
   async function saveSchedule() {
     const schedule = scheduleHours.map(hoursToMinutes)
     if (schedule.some((minutes) => minutes == null)) {
@@ -581,6 +611,9 @@ function ProfileSection() {
   )
 }
 
+/**
+ * Item clicavel da lista de ajustes do perfil.
+ */
 function SettingsOption({ icon: Icon, title, description, onOpen }) {
   return (
     <div className="group rounded-2xl border border-border/80 bg-card/70 p-4 transition-all duration-200 ease-out hover:border-primary/30 hover:bg-accent/35">
@@ -607,7 +640,13 @@ function SettingsOption({ icon: Icon, title, description, onOpen }) {
   )
 }
 
+/**
+ * Controle incremental para adiantar ou atrasar o relogio configurado.
+ */
 function ClockAdjust({ label, step, value, onChange }) {
+  /**
+   * Aplica o incremento mantendo o ajuste dentro do limite permitido.
+   */
   function adjust(delta) {
     onChange((current) => String(Math.max(-43200, Math.min(43200, Number(current || 0) + delta))))
   }
@@ -641,6 +680,9 @@ function ClockAdjust({ label, step, value, onChange }) {
   )
 }
 
+/**
+ * Secao para registrar, editar e remover justificativas de ausencia.
+ */
 function JustifySection() {
   const { user } = useAuth()
   const [date, setDate] = useState(todayISO())
@@ -657,6 +699,9 @@ function JustifySection() {
       .sort((a, b) => (a.date < b.date ? 1 : -1)),
   )
 
+  /**
+   * Monta a acao de salvamento validando abono e periodos de ferias.
+   */
   function buildSavePayload() {
     if (!date) {
       toast.error("Selecione a data.")
@@ -693,11 +738,17 @@ function JustifySection() {
     }
   }
 
+  /**
+   * Abre confirmacao apenas quando o payload de justificativa e valido.
+   */
   function requestSave() {
     const payload = buildSavePayload()
     if (payload) setConfirmAction(payload)
   }
 
+  /**
+   * Persiste justificativas, expandindo ferias em um registro por dia.
+   */
   async function confirmSave(action) {
     for (const itemDate of action.dates) {
       const res = await saveJustification(user.id, itemDate, action.type, action.reason, {
@@ -713,6 +764,9 @@ function JustifySection() {
     toast.success(action.type === "ferias" ? `${action.dates.length} dia(s) de férias registrado(s).` : "Justificativa registrada.")
   }
 
+  /**
+   * Remove uma justificativa e atualiza os calculos dependentes.
+   */
   async function confirmDelete(item) {
     const res = await deleteJustification(user.id, item.date)
     if (res?.error) {
@@ -722,6 +776,9 @@ function JustifySection() {
     toast.success("Justificativa removida.")
   }
 
+  /**
+   * Reaproveita uma justificativa existente como base para edicao.
+   */
   function editJustification(item) {
     setDate(item.date)
     setEndDate(item.date)
@@ -880,6 +937,9 @@ function JustifySection() {
   )
 }
 
+/**
+ * Secao responsavel por importar, exportar e baixar modelo XLSX.
+ */
 function SpreadsheetSection({ onImportComplete }) {
   const { user } = useAuth()
   const [importing, setImporting] = useState(false)
@@ -891,10 +951,16 @@ function SpreadsheetSection({ onImportComplete }) {
       .sort((a, b) => a.date.localeCompare(b.date)),
   )
 
+  /**
+   * Carrega a biblioteca XLSX sob demanda para reduzir o bundle inicial.
+   */
   async function loadXlsx() {
     return import("xlsx")
   }
 
+  /**
+   * Gera e baixa um arquivo XLSX a partir de linhas normalizadas.
+   */
   async function downloadWorkbook(rows, filename) {
     const XLSX = await loadXlsx()
     const worksheet = XLSX.utils.json_to_sheet(rows)
@@ -904,6 +970,9 @@ function SpreadsheetSection({ onImportComplete }) {
     XLSX.writeFile(workbook, filename)
   }
 
+  /**
+   * Exporta todos os pontos carregados do usuario atual.
+   */
   async function exportRecords() {
     if (records.length === 0) {
       toast.info("Nenhum ponto encontrado para exportar.")
@@ -913,6 +982,9 @@ function SpreadsheetSection({ onImportComplete }) {
     await downloadWorkbook(recordsToRows(records), `meu-ponto-${user.name || "usuario"}.xlsx`)
   }
 
+  /**
+   * Baixa um modelo minimo para orientar a importacao.
+   */
   async function downloadTemplate() {
     await downloadWorkbook(
       [
@@ -928,6 +1000,9 @@ function SpreadsheetSection({ onImportComplete }) {
     )
   }
 
+  /**
+   * Confirma a importacao e sinaliza ao shell qual periodo deve ser exibido no relatorio.
+   */
   async function confirmImport(action) {
     setImporting(true)
     try {
@@ -945,6 +1020,9 @@ function SpreadsheetSection({ onImportComplete }) {
     }
   }
 
+  /**
+   * Le todas as abas do XLSX e valida os registros antes de abrir a confirmacao.
+   */
   async function handleFile(event) {
     const file = event.target.files?.[0]
     event.target.value = ""
