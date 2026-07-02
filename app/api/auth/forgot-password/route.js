@@ -23,9 +23,12 @@ export async function POST(request) {
     const supabaseAuth = getSupabaseAuthServer()
 
     // resetPasswordForEmail dispara o e-mail nativo do Supabase para redefinicao de senha.
-    await supabaseAuth.auth.resetPasswordForEmail(email, {
+    const { error: resetError } = await supabaseAuth.auth.resetPasswordForEmail(email, {
       redirectTo: `${getSiteUrl(request)}/redefinir-senha`,
     })
+    if (resetError) {
+      return NextResponse.json({ error: "Nao foi possivel enviar a redefinicao de senha agora." }, { status: 502 })
+    }
 
     // Resposta generica para nao revelar se o e-mail existe ou nao.
     return NextResponse.json({ ok: true })

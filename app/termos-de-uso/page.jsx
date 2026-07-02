@@ -11,7 +11,7 @@ export default function TermsPage() {
     <LegalPage
       badge="Uso do sistema"
       title="Termos de Uso"
-      description="Condicoes para acesso, cadastro, administracao de usuarios, registro de ponto, relatorios e responsabilidades no uso do Meu Ponto CLT."
+      description="Condicoes para acesso, cadastro, registro de ponto, relatorios e responsabilidades no uso do Meu Ponto CLT."
       notice="Estes Termos sao um modelo inicial para o produto e nao substituem revisao juridica adequada ao controlador, ao contrato de trabalho e ao contexto de uso."
       sections={termsSections}
     />

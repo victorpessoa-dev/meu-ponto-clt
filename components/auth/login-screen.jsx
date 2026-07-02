@@ -15,9 +15,6 @@ const MAX_RESET_REQUESTS = 3
 
 export function LoginScreen({ onSuccess }) {
   const { login, requestPasswordReset } = useAuth()
-  const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL
-  const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD
-  const showDemoLogin = process.env.NEXT_PUBLIC_SHOW_DEMO_LOGIN === "true" && demoEmail && demoPassword
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState(null)
@@ -160,15 +157,6 @@ export function LoginScreen({ onSuccess }) {
         <p className="mt-5 text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-primary-foreground/58">
           Virtus Soft
         </p>
-
-        {showDemoLogin && (
-          <div className="mt-6 rounded-lg bg-primary-foreground/10 px-4 py-3 text-center text-xs leading-relaxed text-primary-foreground/70">
-            Acesso de demonstração (admin):
-            <br />
-            <span className="font-medium text-primary-foreground">{demoEmail}</span> / senha{" "}
-            <span className="font-medium text-primary-foreground">{demoPassword}</span>
-          </div>
-        )}
       </div>
     </main>
   )
