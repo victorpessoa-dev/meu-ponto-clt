@@ -1,5 +1,10 @@
 "use client"
 
+/**
+ * Tela de login.
+ *
+ * Controla tentativas locais, mensagens de erro e solicitacao de redefinicao de senha.
+ */
 import { useState } from "react"
 import { Clock, MailCheck } from "lucide-react"
 import Link from "next/link"
@@ -13,11 +18,11 @@ import { PasswordField } from "@/components/auth/password-field"
 const MAX_LOGIN_ATTEMPTS = 5
 const MAX_RESET_REQUESTS = 3
 
+/**
+ * Componente responsavel pelo fluxo de entrada do usuario.
+ */
 export function LoginScreen({ onSuccess }) {
   const { login, requestPasswordReset } = useAuth()
-  const demoEmail = process.env.NEXT_PUBLIC_DEMO_EMAIL
-  const demoPassword = process.env.NEXT_PUBLIC_DEMO_PASSWORD
-  const showDemoLogin = process.env.NEXT_PUBLIC_SHOW_DEMO_LOGIN === "true" && demoEmail && demoPassword
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState(null)
@@ -29,6 +34,9 @@ export function LoginScreen({ onSuccess }) {
   const loginBlocked = loginAttempts >= MAX_LOGIN_ATTEMPTS
   const resetBlocked = resetRequests >= MAX_RESET_REQUESTS
 
+  /**
+   * Autentica o usuario e aplica bloqueio local contra tentativas repetidas.
+   */
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
@@ -54,6 +62,9 @@ export function LoginScreen({ onSuccess }) {
     }
   }
 
+  /**
+   * Solicita link de redefinicao respeitando o limite local da tela.
+   */
   async function handlePasswordReset() {
     setError(null)
     setMessage(null)
@@ -160,15 +171,6 @@ export function LoginScreen({ onSuccess }) {
         <p className="mt-5 text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-primary-foreground/58">
           Virtus Soft
         </p>
-
-        {showDemoLogin && (
-          <div className="mt-6 rounded-lg bg-primary-foreground/10 px-4 py-3 text-center text-xs leading-relaxed text-primary-foreground/70">
-            Acesso de demonstração (admin):
-            <br />
-            <span className="font-medium text-primary-foreground">{demoEmail}</span> / senha{" "}
-            <span className="font-medium text-primary-foreground">{demoPassword}</span>
-          </div>
-        )}
       </div>
     </main>
   )

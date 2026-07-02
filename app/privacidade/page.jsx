@@ -1,3 +1,6 @@
+/**
+ * Pagina publica de Politica de Privacidade.
+ */
 import { LegalPage } from "@/components/legal/legal-page"
 import { privacySections } from "@/lib/legal/legal-content"
 
@@ -6,6 +9,9 @@ export const metadata = {
   description: "Politica de Privacidade e tratamento de dados pessoais do Meu Ponto CLT conforme a LGPD.",
 }
 
+/**
+ * Renderiza o conteudo de privacidade estruturado.
+ */
 export default function PrivacyPage() {
   return (
     <LegalPage

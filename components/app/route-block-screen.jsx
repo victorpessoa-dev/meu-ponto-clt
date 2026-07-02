@@ -1,3 +1,6 @@
+/**
+ * Tela compartilhada para rotas bloqueadas ou inexistentes.
+ */
 import Link from "next/link"
 import { Clock, LockKeyhole, SearchX } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
@@ -24,6 +27,9 @@ const COPY = {
   },
 }
 
+/**
+ * Seleciona a mensagem correta para acesso restrito ou pagina nao encontrada.
+ */
 export function RouteBlockScreen({ type = "restricted" }) {
   const copy = COPY[type] || COPY.restricted
   const Icon = copy.icon || Clock

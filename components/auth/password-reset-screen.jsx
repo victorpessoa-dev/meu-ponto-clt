@@ -1,5 +1,11 @@
 "use client"
 
+/**
+ * Tela de redefinicao de senha.
+ *
+ * Valida o link de recuperacao, limita tentativas na pagina e envia a nova senha
+ * para a rota server-side que confirma a sessao temporaria.
+ */
 import { useEffect, useRef, useState } from "react"
 import { CheckCircle2, Clock, KeyRound, TriangleAlert } from "lucide-react"
 import Link from "next/link"
@@ -17,6 +23,9 @@ const PAGE_ACTIVE_LIMIT_MS = 10 * 60 * 1000
 const MAX_LINK_ATTEMPTS = 3
 const MAX_PASSWORD_ATTEMPTS = 3
 
+/**
+ * Componente responsavel por concluir o fluxo de recuperacao de senha.
+ */
 export function PasswordResetScreen() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -50,6 +59,9 @@ export function PasswordResetScreen() {
   useEffect(() => {
     let cancelled = false
 
+    /**
+     * Troca o codigo do link por uma sessao temporaria antes de liberar o formulario.
+     */
     async function prepareRecovery() {
       setChecking(true)
       setError(null)
@@ -90,6 +102,9 @@ export function PasswordResetScreen() {
     }
   }, [code])
 
+  /**
+   * Valida a nova senha e encerra a sessao temporaria apos a atualizacao.
+   */
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
@@ -100,6 +115,9 @@ export function PasswordResetScreen() {
       return
     }
 
+    /**
+     * Bloqueia o formulario depois de tentativas repetidas no mesmo link.
+     */
     function registerWrongAttempt(message) {
       const nextAttempts = passwordAttempts + 1
       setPasswordAttempts(nextAttempts)

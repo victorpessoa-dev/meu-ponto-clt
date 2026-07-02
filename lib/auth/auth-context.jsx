@@ -1,5 +1,11 @@
 "use client"
 
+/**
+ * Contexto de autenticacao da aplicacao.
+ *
+ * Encapsula a loja externa para que componentes React acessem sessao, login,
+ * cadastro e redefinicao sem conhecer detalhes do Supabase ou do cache local.
+ */
 import { createContext, useCallback, useContext, useEffect, useSyncExternalStore } from "react"
 import { supabase } from "@/lib/supabase/supabase"
 import {
@@ -17,16 +23,25 @@ import {
 
 const AuthContext = createContext(null)
 
+/**
+ * Serializa o usuario para que useSyncExternalStore detecte mudancas relevantes.
+ */
 function getSnapshot() {
   if (!isStoreReady()) return "loading"
   const u = getCurrentUser()
   return u ? JSON.stringify(u) : "none"
 }
 
+/**
+ * Snapshot usado durante renderizacao no servidor, antes da sessao do navegador existir.
+ */
 function getServerSnapshot() {
   return "loading"
 }
 
+/**
+ * Provider responsavel por inicializar sessao e reagir a mudancas de auth do Supabase.
+ */
 export function AuthProvider({ children }) {
   useEffect(() => {
     initializeStore().catch(() => {
@@ -79,12 +94,18 @@ export function AuthProvider({ children }) {
   )
 }
 
+/**
+ * Hook de acesso ao estado e acoes de autenticacao.
+ */
 export function useAuth() {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error("useAuth deve ser usado dentro de AuthProvider")
   return ctx
 }
 
+/**
+ * Hook para ler dados da loja externa com reatividade controlada por versao.
+ */
 export function useStoreData(selector) {
   useSyncExternalStore(subscribe, getStoreVersion, getStoreVersion)
   return selector()

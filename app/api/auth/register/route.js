@@ -1,13 +1,22 @@
+/**
+ * Rota server-side para cadastro de usuarios.
+ *
+ * Valida entrada, aplica rate limit, cria a conta no Supabase Auth e grava o perfil
+ * usado pela aplicacao sem expor a Service Role ao navegador.
+ */
 import { NextResponse } from "next/server"
 import { getSiteUrl, parseRegisterPayload, profileRowFromRegister } from "@/lib/auth/auth-utils"
 import { checkRateLimit, requestKey } from "@/lib/auth/server-rate-limit"
-import { getSupabaseAdmin } from "@/lib/supabase/supabase-admin"
+import { getSupabaseServiceRole } from "@/lib/supabase/supabase-service-role"
 import { getSupabaseAuthServer } from "@/lib/supabase/supabase-auth-server"
 
 export const runtime = "nodejs"
 
+/**
+ * Cria um usuario pendente de confirmacao por e-mail.
+ */
 export async function POST(request) {
-  const supabaseAdmin = getSupabaseAdmin()
+  const supabaseService = getSupabaseServiceRole()
   let createdUserId = null
 
   try {
@@ -57,13 +66,13 @@ export async function POST(request) {
     }
 
     // O Supabase envia a confirmacao; a Service Role apenas grava o perfil usado pelo app.
-    const { error: profileError } = await supabaseAdmin.from("users").upsert(profileRowFromRegister(createdUserId, data))
+    const { error: profileError } = await supabaseService.from("users").upsert(profileRowFromRegister(createdUserId, data))
     if (profileError) throw profileError
 
     return NextResponse.json({ ok: true, email: data.email })
   } catch (error) {
     // Se o perfil falhar depois do Auth, remove a conta recem-criada para evitar cadastro incompleto.
-    if (createdUserId) await supabaseAdmin.auth.admin.deleteUser(createdUserId).catch(() => {})
+    if (createdUserId) await supabaseService.auth.admin.deleteUser(createdUserId).catch(() => {})
     return NextResponse.json({ error: error.message || "Nao foi possivel criar sua conta." }, { status: 500 })
   }
 }

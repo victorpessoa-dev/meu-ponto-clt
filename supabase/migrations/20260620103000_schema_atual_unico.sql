@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS users (
   company_name text,
   job_title text,
   avatar_icon text NOT NULL DEFAULT 'user',
-  is_admin boolean NOT NULL DEFAULT false,
   is_active boolean NOT NULL DEFAULT true,
   schedule integer[] NOT NULL DEFAULT ARRAY[0, 480, 480, 480, 480, 480, 240],
   punch_fields jsonb NOT NULL DEFAULT '[[], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "exit"]]'::jsonb,
@@ -32,6 +31,11 @@ ALTER TABLE users
   ADD COLUMN IF NOT EXISTS punch_fields jsonb NOT NULL DEFAULT '[[], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "exit"]]'::jsonb,
   ADD COLUMN IF NOT EXISTS clock_offset_minutes integer NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS clock_offset_seconds integer NOT NULL DEFAULT 0;
+
+ALTER TABLE users
+  DROP COLUMN IF EXISTS is_admin;
+
+DROP FUNCTION IF EXISTS public.is_admin_user();
 
 UPDATE users
 SET name = COALESCE(name, split_part(email, '@', 1))
@@ -66,36 +70,22 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.is_admin_user() RETURNS boolean
-LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-  result boolean;
-BEGIN
-  PERFORM set_config('row_security', 'off', true);
-  SELECT EXISTS(
-    SELECT 1 FROM public.users
-    WHERE id = auth.uid() AND is_admin AND is_active
-  ) INTO result;
-  RETURN result;
-END;
-$$;
-
 DROP POLICY IF EXISTS "authenticated_select_users" ON users;
 CREATE POLICY "authenticated_select_users" ON users FOR SELECT
-  TO authenticated USING (auth.uid() = id OR public.is_admin_user());
+  TO authenticated USING (auth.uid() = id);
 
 DROP POLICY IF EXISTS "authenticated_insert_users" ON users;
 CREATE POLICY "authenticated_insert_users" ON users FOR INSERT
-  TO authenticated WITH CHECK (auth.uid() = id OR public.is_admin_user());
+  TO authenticated WITH CHECK (auth.uid() = id);
 
 DROP POLICY IF EXISTS "authenticated_update_users" ON users;
 CREATE POLICY "authenticated_update_users" ON users FOR UPDATE
-  TO authenticated USING ((auth.uid() = id AND public.is_active_user()) OR public.is_admin_user())
-  WITH CHECK ((auth.uid() = id AND public.is_active_user()) OR public.is_admin_user());
+  TO authenticated USING (auth.uid() = id AND public.is_active_user())
+  WITH CHECK (auth.uid() = id AND public.is_active_user());
 
 DROP POLICY IF EXISTS "authenticated_delete_users" ON users;
 CREATE POLICY "authenticated_delete_users" ON users FOR DELETE
-  TO authenticated USING (public.is_admin_user());
+  TO authenticated USING (auth.uid() = id AND public.is_active_user());
 
 CREATE OR REPLACE FUNCTION public.protect_user_profile_fields()
 RETURNS trigger
@@ -104,12 +94,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  IF public.is_admin_user() THEN
-    RETURN NEW;
-  END IF;
-
   IF TG_OP = 'INSERT' THEN
-    NEW.is_admin := false;
     NEW.is_active := true;
     NEW.avatar_icon := COALESCE(NULLIF(NEW.avatar_icon, ''), 'user');
     NEW.schedule := COALESCE(NEW.schedule, ARRAY[0, 480, 480, 480, 480, 480, 240]);
@@ -122,7 +107,6 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  NEW.is_admin := OLD.is_admin;
   NEW.is_active := OLD.is_active;
   NEW.clock_offset_minutes := COALESCE(NEW.clock_offset_minutes, 0);
   NEW.clock_offset_seconds := COALESCE(NEW.clock_offset_seconds, NEW.clock_offset_minutes * 60, 0);
@@ -142,7 +126,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  INSERT INTO public.users (id, email, name, birth_date, company_name, job_title, avatar_icon, is_admin, is_active, schedule, punch_fields, clock_offset_minutes, clock_offset_seconds)
+  INSERT INTO public.users (id, email, name, birth_date, company_name, job_title, avatar_icon, is_active, schedule, punch_fields, clock_offset_minutes, clock_offset_seconds)
   VALUES (
     NEW.id,
     NEW.email,
@@ -151,7 +135,6 @@ BEGIN
     NULLIF(NEW.raw_user_meta_data->>'company_name', ''),
     NULLIF(NEW.raw_user_meta_data->>'job_title', ''),
     COALESCE(NULLIF(NEW.raw_user_meta_data->>'avatar_icon', ''), 'user'),
-    false,
     true,
     ARRAY[0, 480, 480, 480, 480, 480, 240],
     '[[], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "exit"]]'::jsonb,
@@ -195,20 +178,20 @@ ALTER TABLE time_records ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "authenticated_select_time_records" ON time_records;
 CREATE POLICY "authenticated_select_time_records" ON time_records FOR SELECT
-  TO authenticated USING ((auth.uid() = user_id AND public.is_active_user()) OR public.is_admin_user());
+  TO authenticated USING (auth.uid() = user_id AND public.is_active_user());
 
 DROP POLICY IF EXISTS "authenticated_insert_time_records" ON time_records;
 CREATE POLICY "authenticated_insert_time_records" ON time_records FOR INSERT
-  TO authenticated WITH CHECK ((auth.uid() = user_id AND public.is_active_user()) OR public.is_admin_user());
+  TO authenticated WITH CHECK (auth.uid() = user_id AND public.is_active_user());
 
 DROP POLICY IF EXISTS "authenticated_update_time_records" ON time_records;
 CREATE POLICY "authenticated_update_time_records" ON time_records FOR UPDATE
-  TO authenticated USING ((auth.uid() = user_id AND public.is_active_user()) OR public.is_admin_user())
-  WITH CHECK ((auth.uid() = user_id AND public.is_active_user()) OR public.is_admin_user());
+  TO authenticated USING (auth.uid() = user_id AND public.is_active_user())
+  WITH CHECK (auth.uid() = user_id AND public.is_active_user());
 
 DROP POLICY IF EXISTS "authenticated_delete_time_records" ON time_records;
 CREATE POLICY "authenticated_delete_time_records" ON time_records FOR DELETE
-  TO authenticated USING ((auth.uid() = user_id AND public.is_active_user()) OR public.is_admin_user());
+  TO authenticated USING (auth.uid() = user_id AND public.is_active_user());
 
 CREATE TABLE IF NOT EXISTS justifications (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -236,17 +219,17 @@ ALTER TABLE justifications ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "authenticated_select_justifications" ON justifications;
 CREATE POLICY "authenticated_select_justifications" ON justifications FOR SELECT
-  TO authenticated USING ((auth.uid() = user_id AND public.is_active_user()) OR public.is_admin_user());
+  TO authenticated USING (auth.uid() = user_id AND public.is_active_user());
 
 DROP POLICY IF EXISTS "authenticated_insert_justifications" ON justifications;
 CREATE POLICY "authenticated_insert_justifications" ON justifications FOR INSERT
-  TO authenticated WITH CHECK ((auth.uid() = user_id AND public.is_active_user()) OR public.is_admin_user());
+  TO authenticated WITH CHECK (auth.uid() = user_id AND public.is_active_user());
 
 DROP POLICY IF EXISTS "authenticated_update_justifications" ON justifications;
 CREATE POLICY "authenticated_update_justifications" ON justifications FOR UPDATE
-  TO authenticated USING ((auth.uid() = user_id AND public.is_active_user()) OR public.is_admin_user())
-  WITH CHECK ((auth.uid() = user_id AND public.is_active_user()) OR public.is_admin_user());
+  TO authenticated USING (auth.uid() = user_id AND public.is_active_user())
+  WITH CHECK (auth.uid() = user_id AND public.is_active_user());
 
 DROP POLICY IF EXISTS "authenticated_delete_justifications" ON justifications;
 CREATE POLICY "authenticated_delete_justifications" ON justifications FOR DELETE
-  TO authenticated USING ((auth.uid() = user_id AND public.is_active_user()) OR public.is_admin_user());
+  TO authenticated USING (auth.uid() = user_id AND public.is_active_user());

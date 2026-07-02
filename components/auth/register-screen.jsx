@@ -1,5 +1,11 @@
 "use client"
 
+/**
+ * Tela de cadastro em etapas.
+ *
+ * Separa dados profissionais e credenciais para validar regras de negocio antes
+ * de criar a conta no Supabase.
+ */
 import { useState } from "react"
 import { Building2, BriefcaseBusiness, CalendarDays, Clock, KeyRound, MailCheck, UserRound } from "lucide-react"
 import Link from "next/link"
@@ -20,6 +26,9 @@ const STEPS = [
   { key: "login", label: "Login", icon: KeyRound },
 ]
 
+/**
+ * Componente responsavel pela criacao de cadastro e redirecionamento para confirmacao.
+ */
 export function RegisterScreen() {
   const { register } = useAuth()
   const router = useRouter()
@@ -39,6 +48,9 @@ export function RegisterScreen() {
   const passwordChecks = getPasswordChecks(password)
   const dataReady = name.trim() && birthDate && companyName.trim() && jobTitle.trim() && isAdult(birthDate)
 
+  /**
+   * Avanca para etapa de credenciais somente com dados profissionais validos.
+   */
   function goToLogin() {
     setError(null)
     if (!name.trim() || !birthDate || !companyName.trim() || !jobTitle.trim()) {
@@ -52,6 +64,9 @@ export function RegisterScreen() {
     setStep("login")
   }
 
+  /**
+   * Valida maioridade, e-mail, senha e confirmacao antes de enviar o cadastro.
+   */
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)

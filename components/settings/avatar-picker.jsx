@@ -1,5 +1,10 @@
 "use client"
 
+/**
+ * Componentes de avatar profissional do perfil.
+ *
+ * Usa icones tematicos para representar area de atuacao sem depender de upload de imagem.
+ */
 import { useState } from "react"
 import {
   BriefcaseBusiness,
@@ -48,10 +53,16 @@ export const AVATAR_OPTIONS = [
   { key: "sparkles", label: "Liderança", icon: Sparkles, tone: "bg-positive text-positive-foreground ring-positive/20" },
 ]
 
+/**
+ * Retorna a opcao de avatar solicitada ou o avatar padrao.
+ */
 export function getAvatarOption(key) {
   return AVATAR_OPTIONS.find((option) => option.key === key) ?? AVATAR_OPTIONS[0]
 }
 
+/**
+ * Renderiza o avatar selecionado para cabecalhos, menus e perfil.
+ */
 export function UserAvatar({ avatarIcon, name, className, iconClassName }) {
   const option = getAvatarOption(avatarIcon)
   const Icon = option.icon
@@ -70,6 +81,9 @@ export function UserAvatar({ avatarIcon, name, className, iconClassName }) {
   )
 }
 
+/**
+ * Selector acessivel de avatar com comportamento de radio group.
+ */
 export function AvatarPicker({ value, onChange, label = "Escolha um avatar" }) {
   const [open, setOpen] = useState(false)
 

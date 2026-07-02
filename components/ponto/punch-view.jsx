@@ -1,5 +1,11 @@
 "use client"
 
+/**
+ * Tela principal de batida de ponto.
+ *
+ * Controla o relogio da empresa, valida a ordem das batidas do dia
+ * e resume o banco de horas recente do usuario autenticado.
+ */
 import { useEffect, useMemo, useRef, useState } from "react"
 import { BarChart3, ChevronLeft, ChevronRight, DoorOpen, LogIn, LogOut, Coffee, Utensils, Check } from "lucide-react"
 import { useAuth, useStoreData } from "@/lib/auth/auth-context"
@@ -46,6 +52,9 @@ const PUNCH_LABELS = {
 
 const FULL_DAY_KEYS = FIELDS.map((field) => field.key)
 
+/**
+ * Calcula quais batidas podem ser feitas agora respeitando ordem e configuracao diaria.
+ */
 function nextAllowedFields(record, configuredKeys) {
   if (!configuredKeys.includes("entry") || !record?.entry) return configuredKeys.includes("entry") ? ["entry"] : []
   if (record.breakTime && configuredKeys.includes("returnTime") && !record.returnTime) return ["returnTime"]
@@ -56,6 +65,9 @@ function nextAllowedFields(record, configuredKeys) {
   return []
 }
 
+/**
+ * Traduz a proxima etapa esperada em uma mensagem de orientacao para o usuario.
+ */
 function punchOrderMessage(nextFields) {
   if (nextFields.includes("entry")) return "Comece o dia registrando a entrada."
   if (nextFields.includes("breakTime") && nextFields.includes("exit")) return "Depois da entrada, registre a pausa ou a saída."
@@ -65,6 +77,9 @@ function punchOrderMessage(nextFields) {
   return "Siga a ordem das batidas do dia."
 }
 
+/**
+ * Componente responsavel pelo registro diario de ponto e resumo visual do mes.
+ */
 export function PunchView() {
   const { user } = useAuth()
   const [date, setDate] = useState(todayISO())
@@ -139,6 +154,9 @@ export function PunchView() {
 
   if (!user) return null
 
+  /**
+   * Navega entre dias sem permitir selecao de datas futuras.
+   */
   function shiftDay(delta) {
     const d = parseISODate(date)
     d.setDate(d.getDate() + delta)
@@ -147,6 +165,9 @@ export function PunchView() {
     setDate(iso)
   }
 
+  /**
+   * Registra uma batida depois de validar data, duplicidade, configuracao e ordem.
+   */
   async function handlePunch(field) {
     if (!isToday) {
       toast.info("Só é possível bater ponto no dia de hoje. Para corrigir outro dia, use Relatório.")
@@ -304,6 +325,9 @@ export function PunchView() {
   )
 }
 
+/**
+ * Monta a serie mensal usada no grafico, incluindo dias em aberto e justificativas.
+ */
 function buildMonthChart(date, records, justifications, schedule, activeTime) {
   const base = parseISODate(date)
   const year = base.getFullYear()
@@ -353,6 +377,9 @@ function buildMonthChart(date, records, justifications, schedule, activeTime) {
   }
 }
 
+/**
+ * Calcula a media historica apenas sobre dias que entram no banco de horas.
+ */
 function buildAverageWorked(records, justifications, schedule) {
   const justByDate = new Map(justifications.map((justification) => [justification.date, justification]))
   const bankable = records
@@ -363,6 +390,9 @@ function buildAverageWorked(records, justifications, schedule) {
   return bankable.reduce((total, metrics) => total + metrics.worked, 0) / bankable.length
 }
 
+/**
+ * Exibe o resumo mensal com barras por dia e linha de media historica.
+ */
 function MonthOverview({ chart, selectedDate, totalAverageWorked }) {
   const scrollRef = useRef(null)
   const autoScrollKeyRef = useRef(null)
@@ -469,6 +499,9 @@ function MonthOverview({ chart, selectedDate, totalAverageWorked }) {
   )
 }
 
+/**
+ * Centraliza o dia atual no grafico horizontal quando o mes e aberto.
+ */
 function scrollChartToToday(container, today) {
   if (!container) return
   window.requestAnimationFrame(() => {
@@ -481,6 +514,9 @@ function scrollChartToToday(container, today) {
   })
 }
 
+/**
+ * Define a cor da barra conforme status trabalhista e impacto no banco de horas.
+ */
 function chartBarClass(day) {
   if (day.just?.type === "feriado") return "bg-chart-5"
   if (day.just?.type === "folga" || day.expected === 0) return "bg-primary/45"
@@ -492,6 +528,9 @@ function chartBarClass(day) {
   return day.balance >= 0 ? "bg-positive" : "bg-negative"
 }
 
+/**
+ * Seleciona estilo do card de batida com base no tipo e no estado registrado.
+ */
 function punchCardClass({ tone, value, canPunch }) {
   if (value) {
     if (tone === "entry") return "border-positive bg-positive text-positive-foreground shadow-[0_12px_28px_rgba(88,168,122,0.18)] dark:shadow-none"
@@ -508,6 +547,9 @@ function punchCardClass({ tone, value, canPunch }) {
   return "border-primary/30 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
 }
 
+/**
+ * Seleciona estilo do icone da batida.
+ */
 function punchIconClass({ tone, value, canPunch }) {
   if (value) {
     return "bg-white/20 text-current"
@@ -520,6 +562,9 @@ function punchIconClass({ tone, value, canPunch }) {
   return "bg-primary/15 text-primary"
 }
 
+/**
+ * Retorna a cor textual associada ao tipo de batida.
+ */
 function punchTextClass(tone) {
   if (tone === "entry") return "text-positive"
   if (tone === "exit") return "text-negative"
@@ -528,6 +573,9 @@ function punchTextClass(tone) {
   return "text-primary"
 }
 
+/**
+ * Card compacto para totais do dia.
+ */
 function DaySummary({ label, value, tone = "default" }) {
   return (
     <div className="flex flex-col items-center gap-1 px-2 py-5">

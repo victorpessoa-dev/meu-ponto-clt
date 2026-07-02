@@ -1,5 +1,11 @@
 "use client"
 
+/**
+ * Tela de relatorio de ponto.
+ *
+ * Apresenta totais, grafico mensal e planilha editavel para ajustes manuais
+ * sem misturar a regra de calculo com a camada de persistencia.
+ */
 import { useEffect, useMemo, useRef, useState } from "react"
 import { BarChart3, ChevronLeft, ChevronRight, EyeOff, Save, Table2 } from "lucide-react"
 import { useAuth, useStoreData } from "@/lib/auth/auth-context"
@@ -36,6 +42,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 
+/**
+ * Componente responsavel pela consulta e ajuste dos registros de ponto.
+ */
 export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
   const { user } = useAuth()
   const now = new Date()
@@ -154,6 +163,9 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
     minWidth: `${Math.max(dayMetrics.length * 32, 320)}px`,
   }
 
+  /**
+   * Preenche o modal com os horarios existentes do dia selecionado.
+   */
   function openEdit(day) {
     setEditDate(day.iso)
     setEditValues({
@@ -164,6 +176,9 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
     })
   }
 
+  /**
+   * Valida a ordem cronologica das batidas antes de salvar ajustes manuais.
+   */
   async function saveEdit() {
     if (!editDate) return
 
@@ -454,6 +469,9 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
   )
 }
 
+/**
+ * Controle compacto para navegar entre meses ou anos mantendo o item atual em destaque.
+ */
 function CalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onShift, className }) {
   const slots = [-2, -1, 0, 1, 2]
 
@@ -462,7 +480,7 @@ function CalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onShift,
       <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => onShift(-1)} aria-label={`${ariaLabel} anterior`}>
         <ChevronLeft className="h-5 w-5" />
       </Button>
-      <div className="relative h-16 min-w-0 overflow-hidden rounded-2xl bg-muted/65 ring-1 ring-border/70" role="tablist" aria-label={ariaLabel}>
+      <div className="relative h-16 min-w-0 overflow-hidden rounded-2xl bg-transparent ring-1 ring-border/70" role="tablist" aria-label={ariaLabel}>
         <div className="absolute inset-x-0 top-1/2 h-11 -translate-y-1/2">
           {slots.map((slot) => {
             const itemValue = getValue(slot)
@@ -475,13 +493,13 @@ function CalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onShift,
                 aria-selected={active}
                 onClick={() => onChange(itemValue)}
                 className={cn(
-                  "absolute top-0 h-11 rounded-xl border px-3 text-sm font-semibold shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-300 ease-out will-change-transform",
+                  "absolute top-0 h-11 rounded-xl border px-3 text-sm font-semibold transition-all duration-300 ease-out will-change-transform",
                   "focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
                   active && "left-[22%] right-[22%] z-20 border-primary bg-primary text-primary-foreground",
-                  slot === -1 && "left-[-5%] right-[73%] z-10 scale-90 border-border bg-card text-primary opacity-75",
-                  slot === 1 && "left-[73%] right-[-5%] z-10 scale-90 border-border bg-card text-primary opacity-75",
-                  slot === -2 && "left-[-32%] right-[96%] scale-[0.8] border-border bg-card text-primary opacity-25",
-                  slot === 2 && "left-[96%] right-[-32%] scale-[0.8] border-border bg-card text-primary opacity-25",
+                  slot === -1 && "left-[-5%] right-[73%] z-10 scale-90 border-transparent bg-transparent text-primary opacity-75",
+                  slot === 1 && "left-[73%] right-[-5%] z-10 scale-90 border-transparent bg-transparent text-primary opacity-75",
+                  slot === -2 && "left-[-32%] right-[96%] scale-[0.8] border-transparent bg-transparent text-primary opacity-25",
+                  slot === 2 && "left-[96%] right-[-32%] scale-[0.8] border-transparent bg-transparent text-primary opacity-25",
                   className,
                 )}
               >
@@ -498,6 +516,9 @@ function CalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onShift,
   )
 }
 
+/**
+ * Legenda das cores usadas no grafico de saldo diario.
+ */
 function ChartLegend() {
   const items = [
     ["bg-positive", "Positivo"],
@@ -521,6 +542,9 @@ function ChartLegend() {
   )
 }
 
+/**
+ * Soma o historico completo considerando apenas dias que entram no banco de horas.
+ */
 function buildTotalSummary(records, justifications, schedule) {
   const recordsByDate = new Map(records.map((record) => [record.date, record]))
   const justByDate = new Map(justifications.map((justification) => [justification.date, justification]))
@@ -540,6 +564,9 @@ function buildTotalSummary(records, justifications, schedule) {
   )
 }
 
+/**
+ * Centraliza o dia atual no grafico quando o mes atual e aberto.
+ */
 function scrollChartToToday(container, today) {
   if (!container) return
   window.requestAnimationFrame(() => {
@@ -552,6 +579,9 @@ function scrollChartToToday(container, today) {
   })
 }
 
+/**
+ * Define a cor da barra conforme justificativa, folga e saldo do dia.
+ */
 function chartBarClass(day) {
   if (day.just?.type === "feriado") return "bg-chart-5"
   if (day.just?.type === "folga" || day.expected === 0) return "bg-primary/45"
@@ -563,16 +593,25 @@ function chartBarClass(day) {
   return day.balance >= 0 ? "bg-positive" : "bg-negative"
 }
 
+/**
+ * Gera o texto de contexto exibido no tooltip do dia.
+ */
 function dayTitle(day) {
   if (day.just?.type) return JUSTIFICATION_LABELS[day.just.type] || "Justificativa"
   if (day.expected === 0) return "Folga"
   return day.bankable ? `Trabalhado ${minutesToHHMM(day.worked)}` : "Sem banco"
 }
 
+/**
+ * Celula base da planilha responsiva.
+ */
 function Cell({ children, className }) {
   return <div className={cn("flex items-center px-1.5 py-2 sm:px-2", className)}>{children}</div>
 }
 
+/**
+ * Celula de horario com destaque visual para entrada e saida.
+ */
 function TimeCell({ value, tone, className }) {
   return (
     <div className={cn("flex items-center justify-center px-1.5 py-2 font-mono text-[11px] tabular-nums sm:px-2 sm:text-xs", className)}>
@@ -594,6 +633,9 @@ function TimeCell({ value, tone, className }) {
   )
 }
 
+/**
+ * Celula de saldo que oculta dias sem impacto no banco.
+ */
 function BalanceCell({ bankable, balance }) {
   return (
     <div className="flex items-center justify-center px-1.5 py-2 font-mono text-[10px] font-bold tabular-nums sm:px-2 sm:text-xs">
@@ -606,6 +648,9 @@ function BalanceCell({ bankable, balance }) {
   )
 }
 
+/**
+ * Define o fundo da linha conforme justificativa ou dia sem jornada.
+ */
 function rowToneClass({ expected, just }) {
   if (just?.type === "ferias") return "bg-positive/10"
   if (just?.type === "feriado") return "bg-chart-5/15"
@@ -615,6 +660,9 @@ function rowToneClass({ expected, just }) {
   return ""
 }
 
+/**
+ * Define o estilo do selo de status exibido em dias sem batida.
+ */
 function statusPillClass({ expected, just }) {
   if (just?.type === "feriado") return "bg-chart-5/15 text-chart-5"
   if (just?.type === "folga" || expected === 0) return "bg-primary/10 text-primary"
@@ -623,6 +671,9 @@ function statusPillClass({ expected, just }) {
   return "bg-chart-3/15 text-chart-3"
 }
 
+/**
+ * Card compacto para totais de relatorio.
+ */
 function SummaryCard({ label, value, tone = "default" }) {
   return (
     <Card className="flex flex-col items-center gap-1.5 p-4">
