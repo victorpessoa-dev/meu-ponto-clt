@@ -34,6 +34,7 @@ import { JUSTIFICATION_LABELS } from "@/lib/data/types"
 import { cn } from "@/lib/utils/utils"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { ContextualTip } from "@/components/onboarding/onboarding"
 import { toast } from "sonner"
 
 const FIELDS = [
@@ -203,7 +204,7 @@ export function PunchView() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/80 bg-card/70 p-2 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/80 bg-card/70 p-2 shadow-[0_1px_2px_rgba(15,23,42,0.04)]" data-tour-id="ponto-day-picker">
         <Button variant="outline" size="icon" className="touch-target shrink-0" onClick={() => shiftDay(-1)} aria-label="Dia anterior">
           <ChevronLeft className="h-5 w-5" />
         </Button>
@@ -229,7 +230,7 @@ export function PunchView() {
       </div>
 
       {isToday && (
-        <div className="rounded-2xl border border-border/80 bg-card/80 px-4 py-5 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div className="rounded-2xl border border-border/80 bg-card/80 px-4 py-5 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]" data-tour-id="ponto-company-clock">
           <p className="text-xs font-medium uppercase text-primary/80">Relógio da empresa</p>
           <p className="mt-1 font-mono text-4xl font-bold leading-none tabular-nums text-primary">{clockNow}</p>
         </div>
@@ -250,7 +251,7 @@ export function PunchView() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-3.5">
+      <div className="grid grid-cols-2 gap-3 sm:gap-3.5" data-tour-id="ponto-punch-actions">
         {activeFields.map(({ key, label, icon: Icon, tone }) => {
           const value = record?.[key] ?? null
           const needsBreakFirst = key === "returnTime" && !record?.breakTime
@@ -319,6 +320,10 @@ export function PunchView() {
           Escolha qual batida deseja registrar.
         </p>
       )}
+
+      <ContextualTip>
+        A ordem das batidas protege seu banco de horas. Exemplo: após registrar Pausa, o próximo passo esperado é Retorno.
+      </ContextualTip>
 
       <MonthOverview chart={monthChart} selectedDate={date} totalAverageWorked={totalAverageWorked} />
     </div>
@@ -415,7 +420,7 @@ function MonthOverview({ chart, selectedDate, totalAverageWorked }) {
   }, [chart.days, chartMonthKey])
 
   return (
-    <Card className="overflow-hidden p-5 animate-fade-slide">
+    <Card className="overflow-hidden p-5 animate-fade-slide" data-tour-id="ponto-month-overview">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <BarChart3 className="h-4 w-4 shrink-0 text-primary" />

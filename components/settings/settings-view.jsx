@@ -67,6 +67,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { PasswordField } from "@/components/auth/password-field"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
+import { ContextualTip, OnboardingHelpCard } from "@/components/onboarding/onboarding"
 import { toast } from "sonner"
 
 const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
@@ -93,13 +94,25 @@ function hoursToMinutes(value) {
 /**
  * Componente de abas de configuracao do usuario autenticado.
  */
-export function SettingsView({ onImportComplete }) {
+export function SettingsView({ value, onValueChange, onImportComplete }) {
   const { user } = useAuth()
+  const [internalValue, setInternalValue] = useState(value ?? "perfil")
+
+  useEffect(() => {
+    if (value) setInternalValue(value)
+  }, [value])
+
   if (!user) return null
+  const activeValue = value ?? internalValue
+
+  function handleValueChange(nextValue) {
+    setInternalValue(nextValue)
+    onValueChange?.(nextValue)
+  }
 
   return (
-    <Tabs defaultValue="perfil" className="flex flex-col gap-5">
-      <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-2xl p-1">
+    <Tabs value={activeValue} onValueChange={handleValueChange} className="flex flex-col gap-5">
+      <TabsList className="grid h-auto w-full grid-cols-3 gap-1 rounded-2xl p-1" data-tour-id="settings-tabs">
         <TabsTrigger value="perfil" className="min-h-11 px-1 py-2 text-xs sm:text-sm">Perfil</TabsTrigger>
         <TabsTrigger value="justificar" className="min-h-11 px-1 py-2 text-xs sm:text-sm">Justificar</TabsTrigger>
         <TabsTrigger value="planilha" className="min-h-11 px-1 py-2 text-xs sm:text-sm">Planilha</TabsTrigger>
@@ -295,7 +308,7 @@ function ProfileSection() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3.5">
+        <div className="grid grid-cols-1 gap-3.5" data-tour-id="settings-profile-options">
           <SettingsOption
             icon={UserCog}
             title="Perfil"
@@ -326,6 +339,7 @@ function ProfileSection() {
             description="Modo claro e escuro"
             onOpen={() => setActiveDialog("appearance")}
           />
+          <OnboardingHelpCard />
         </div>
 
         <div className="flex justify-center">
@@ -791,7 +805,7 @@ function JustifySection() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Card>
+      <Card data-tour-id="settings-justify-form">
         <CardHeader>
           <CardTitle className="text-base">Justificar falta ou ausência</CardTitle>
         </CardHeader>
@@ -865,6 +879,9 @@ function JustifySection() {
             <Save className="mr-2 h-4 w-4" />
             Registrar justificativa
           </Button>
+          <ContextualTip>
+            Use justificativas para explicar dias sem batida ou períodos abonados. Exemplo: informe um atestado médico em uma data passada.
+          </ContextualTip>
         </CardContent>
       </Card>
 
@@ -1068,7 +1085,7 @@ function SpreadsheetSection({ onImportComplete }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Card>
+      <Card data-tour-id="settings-spreadsheet-tools">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <FileSpreadsheet className="h-4 w-4 text-primary" />

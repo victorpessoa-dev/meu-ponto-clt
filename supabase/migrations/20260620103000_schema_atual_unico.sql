@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
   punch_fields jsonb NOT NULL DEFAULT '[[], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "exit"]]'::jsonb,
   clock_offset_minutes integer NOT NULL DEFAULT 0,
   clock_offset_seconds integer NOT NULL DEFAULT 0,
+  onboarding_state smallint NOT NULL DEFAULT 0,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -30,10 +31,15 @@ ALTER TABLE users
   ADD COLUMN IF NOT EXISTS schedule integer[] NOT NULL DEFAULT ARRAY[0, 480, 480, 480, 480, 480, 240],
   ADD COLUMN IF NOT EXISTS punch_fields jsonb NOT NULL DEFAULT '[[], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "breakTime", "returnTime", "exit"], ["entry", "exit"]]'::jsonb,
   ADD COLUMN IF NOT EXISTS clock_offset_minutes integer NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS clock_offset_seconds integer NOT NULL DEFAULT 0;
+  ADD COLUMN IF NOT EXISTS clock_offset_seconds integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS onboarding_state smallint NOT NULL DEFAULT 0;
 
 ALTER TABLE users
-  DROP COLUMN IF EXISTS is_admin;
+  DROP COLUMN IF EXISTS is_admin,
+  DROP COLUMN IF EXISTS onboarding_status,
+  DROP COLUMN IF EXISTS onboarding_version,
+  DROP COLUMN IF EXISTS onboarding_completed_at,
+  DROP COLUMN IF EXISTS onboarding_skipped_at;
 
 DROP FUNCTION IF EXISTS public.is_admin_user();
 
@@ -44,7 +50,9 @@ WHERE name IS NULL;
 ALTER TABLE users
   DROP CONSTRAINT IF EXISTS users_punch_fields_array_check,
   DROP CONSTRAINT IF EXISTS users_clock_offset_minutes_check,
-  DROP CONSTRAINT IF EXISTS users_clock_offset_seconds_check;
+  DROP CONSTRAINT IF EXISTS users_clock_offset_seconds_check,
+  DROP CONSTRAINT IF EXISTS users_onboarding_status_check,
+  DROP CONSTRAINT IF EXISTS users_onboarding_state_check;
 
 ALTER TABLE users
   ADD CONSTRAINT users_punch_fields_array_check
@@ -52,7 +60,9 @@ ALTER TABLE users
   ADD CONSTRAINT users_clock_offset_minutes_check
   CHECK (clock_offset_minutes BETWEEN -720 AND 720),
   ADD CONSTRAINT users_clock_offset_seconds_check
-  CHECK (clock_offset_seconds BETWEEN -43200 AND 43200);
+  CHECK (clock_offset_seconds BETWEEN -43200 AND 43200),
+  ADD CONSTRAINT users_onboarding_state_check
+  CHECK (onboarding_state IN (0, 1, 2));
 
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 

@@ -27,6 +27,7 @@ import { JUSTIFICATION_LABELS } from "@/lib/data/types"
 import { cn } from "@/lib/utils/utils"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { ContextualTip } from "@/components/onboarding/onboarding"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   AlertDialog,
@@ -231,7 +232,7 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3.5 rounded-2xl border border-border/80 bg-card/90 p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div className="flex flex-col gap-3.5 rounded-2xl border border-border/80 bg-card/90 p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]" data-tour-id="relatorio-filters">
         <CalendarCarousel
           ariaLabel="Selecionar mês do relatório"
           getValue={(offset) => (cursor.month + offset + 12) % 12}
@@ -335,7 +336,12 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
         </div>
       </div>
 
+      <ContextualTip>
+        Use filtros de mês e ano antes de ajustar registros. Exemplo: confira abril antes de corrigir uma saída esquecida.
+      </ContextualTip>
+
       <div
+        data-tour-id="relatorio-sheet"
         className={cn(
           "overflow-hidden transition-[max-height,opacity,transform] duration-300 ease-out",
           showSheet ? "max-h-[2200px] opacity-100" : "pointer-events-none max-h-0 -translate-y-1 opacity-0",

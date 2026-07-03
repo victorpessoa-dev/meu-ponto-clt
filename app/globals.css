@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
+@import 'driver.js/dist/driver.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -209,6 +210,152 @@
   [data-sonner-toaster],
   .toaster {
     z-index: 2147483647 !important;
+  }
+  .driver-popover.driver-popover-app {
+    box-sizing: border-box;
+    max-width: min(22.5rem, calc(100vw - 2rem));
+    border: 1px solid color-mix(in oklch, var(--border) 90%, transparent);
+    border-radius: var(--radius-2xl);
+    background-color: var(--popover);
+    background: var(--popover);
+    background: color-mix(in oklch, var(--popover) 96%, var(--background));
+    color: var(--popover-foreground);
+    box-shadow: 0 24px 80px rgba(15, 23, 42, 0.22);
+    padding: 1rem;
+  }
+  .driver-popover.driver-popover-app * {
+    font-family: var(--font-sans);
+  }
+  .driver-popover.driver-popover-app .driver-popover-title {
+    color: var(--foreground);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1.35;
+    padding-right: 2rem;
+  }
+  .driver-popover.driver-popover-app .driver-popover-description {
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+  .driver-popover.driver-popover-app .driver-tour-example {
+    display: block;
+    border-radius: var(--radius-xl);
+    background-color: var(--accent);
+    background: var(--accent);
+    background: color-mix(in oklch, var(--accent) 55%, transparent);
+    color: var(--accent-foreground);
+    font-size: 0.75rem;
+    line-height: 1.55;
+    padding: 0.5rem 0.75rem;
+  }
+  .driver-popover.driver-popover-app .driver-popover-footer {
+    align-items: center;
+    background-color: color-mix(in oklch, var(--muted) 42%, transparent);
+    border-top: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+    gap: 0.5rem;
+    margin: 1rem -1rem -1rem;
+    padding: 0.75rem 1rem 1rem;
+  }
+  .driver-popover.driver-popover-app .driver-popover-progress-text {
+    color: var(--primary);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .driver-popover.driver-popover-app .driver-popover-footer-btn {
+    border-radius: var(--radius-xl);
+    border-color: color-mix(in oklch, var(--primary) 30%, transparent);
+    background-color: var(--card);
+    background: color-mix(in oklch, var(--card) 86%, var(--primary) 14%);
+    color: var(--primary);
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1;
+    min-height: 2.5rem;
+    min-width: 2.75rem;
+    padding: 0.5rem 0.75rem;
+  }
+  .driver-popover.driver-popover-app .driver-popover-footer-btn svg {
+    height: 1.25rem;
+    width: 1.25rem;
+    margin: 0 auto;
+  }
+  .driver-popover.driver-popover-app .driver-popover-prev-btn,
+  .driver-popover.driver-popover-app .driver-popover-next-btn {
+    background-color: var(--card);
+    background: color-mix(in oklch, var(--primary) 10%, var(--card));
+  }
+  .driver-popover.driver-popover-app .driver-popover-prev-btn:hover,
+  .driver-popover.driver-popover-app .driver-popover-next-btn:hover,
+  .driver-popover.driver-popover-app .driver-popover-prev-btn:focus,
+  .driver-popover.driver-popover-app .driver-popover-next-btn:focus {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--primary-foreground);
+  }
+  .driver-popover.driver-popover-app .driver-popover-close-btn {
+    color: var(--muted-foreground);
+    font-size: 1.25rem;
+  }
+  .driver-popover.driver-popover-app .driver-popover-arrow {
+    border-color: var(--popover);
+  }
+  html.dark .driver-popover.driver-popover-app,
+  body.dark .driver-popover.driver-popover-app,
+  .driver-popover.driver-popover-dark,
+  .dark .driver-popover.driver-popover-app {
+    border-color: color-mix(in oklch, var(--primary) 22%, var(--border));
+    background-color: var(--popover);
+    background: var(--popover);
+    background: color-mix(in oklch, var(--popover) 94%, black);
+    box-shadow: 0 26px 80px rgba(0, 0, 0, 0.52);
+  }
+  html.dark .driver-popover.driver-popover-app .driver-popover-title,
+  body.dark .driver-popover.driver-popover-app .driver-popover-title,
+  .driver-popover.driver-popover-dark .driver-popover-title,
+  .dark .driver-popover.driver-popover-app .driver-popover-title {
+    color: var(--foreground);
+  }
+  html.dark .driver-popover.driver-popover-app .driver-popover-description,
+  body.dark .driver-popover.driver-popover-app .driver-popover-description,
+  .driver-popover.driver-popover-dark .driver-popover-description,
+  .dark .driver-popover.driver-popover-app .driver-popover-description {
+    color: var(--muted-foreground);
+  }
+  html.dark .driver-popover.driver-popover-app .driver-tour-example,
+  body.dark .driver-popover.driver-popover-app .driver-tour-example,
+  .driver-popover.driver-popover-dark .driver-tour-example,
+  .dark .driver-popover.driver-popover-app .driver-tour-example {
+    background-color: var(--accent);
+    background: var(--accent);
+    background: color-mix(in oklch, var(--accent) 62%, var(--background));
+    color: var(--foreground);
+  }
+  html.dark .driver-popover.driver-popover-app .driver-popover-footer,
+  body.dark .driver-popover.driver-popover-app .driver-popover-footer,
+  .driver-popover.driver-popover-dark .driver-popover-footer,
+  .dark .driver-popover.driver-popover-app .driver-popover-footer {
+    background-color: var(--muted);
+    background: color-mix(in oklch, var(--muted) 28%, transparent);
+  }
+  html.dark .driver-popover.driver-popover-app .driver-popover-prev-btn,
+  html.dark .driver-popover.driver-popover-app .driver-popover-next-btn,
+  body.dark .driver-popover.driver-popover-app .driver-popover-prev-btn,
+  body.dark .driver-popover.driver-popover-app .driver-popover-next-btn,
+  .driver-popover.driver-popover-dark .driver-popover-prev-btn,
+  .driver-popover.driver-popover-dark .driver-popover-next-btn,
+  .dark .driver-popover.driver-popover-app .driver-popover-prev-btn,
+  .dark .driver-popover.driver-popover-app .driver-popover-next-btn {
+    background-color: var(--card);
+    background: color-mix(in oklch, var(--primary) 16%, var(--card));
+    border-color: color-mix(in oklch, var(--primary) 42%, var(--border));
+  }
+  html.dark .driver-popover.driver-popover-app .driver-popover-arrow,
+  body.dark .driver-popover.driver-popover-app .driver-popover-arrow,
+  .driver-popover.driver-popover-dark .driver-popover-arrow,
+  .dark .driver-popover.driver-popover-app .driver-popover-arrow {
+    border-color: color-mix(in oklch, var(--popover) 94%, black);
   }
   html {
     @apply font-sans;
