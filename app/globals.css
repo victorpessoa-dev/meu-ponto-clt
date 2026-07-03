@@ -305,39 +305,51 @@
   body.dark .driver-popover.driver-popover-app,
   .driver-popover.driver-popover-dark,
   .dark .driver-popover.driver-popover-app {
-    border-color: color-mix(in oklch, var(--primary) 22%, var(--border));
-    background-color: var(--popover);
-    background: var(--popover);
-    background: color-mix(in oklch, var(--popover) 94%, black);
+    --tour-popover-bg: oklch(0.985 0.006 245);
+    --tour-popover-text: oklch(0.2 0.032 255);
+    --tour-popover-muted: oklch(0.42 0.035 255);
+    --tour-popover-accent: oklch(0.93 0.03 245);
+    --tour-popover-primary: oklch(0.35 0.105 252);
+    --tour-popover-border: oklch(0.86 0.016 245);
+    border-color: var(--tour-popover-border);
+    background-color: var(--tour-popover-bg);
+    background: var(--tour-popover-bg);
+    color: var(--tour-popover-text);
     box-shadow: 0 26px 80px rgba(0, 0, 0, 0.52);
   }
   html.dark .driver-popover.driver-popover-app .driver-popover-title,
   body.dark .driver-popover.driver-popover-app .driver-popover-title,
   .driver-popover.driver-popover-dark .driver-popover-title,
   .dark .driver-popover.driver-popover-app .driver-popover-title {
-    color: var(--foreground);
+    color: var(--tour-popover-text);
   }
   html.dark .driver-popover.driver-popover-app .driver-popover-description,
   body.dark .driver-popover.driver-popover-app .driver-popover-description,
   .driver-popover.driver-popover-dark .driver-popover-description,
   .dark .driver-popover.driver-popover-app .driver-popover-description {
-    color: var(--muted-foreground);
+    color: var(--tour-popover-muted);
   }
   html.dark .driver-popover.driver-popover-app .driver-tour-example,
   body.dark .driver-popover.driver-popover-app .driver-tour-example,
   .driver-popover.driver-popover-dark .driver-tour-example,
   .dark .driver-popover.driver-popover-app .driver-tour-example {
-    background-color: var(--accent);
-    background: var(--accent);
-    background: color-mix(in oklch, var(--accent) 62%, var(--background));
-    color: var(--foreground);
+    background-color: var(--tour-popover-accent);
+    background: color-mix(in oklch, var(--tour-popover-accent) 86%, white);
+    color: var(--tour-popover-text);
   }
   html.dark .driver-popover.driver-popover-app .driver-popover-footer,
   body.dark .driver-popover.driver-popover-app .driver-popover-footer,
   .driver-popover.driver-popover-dark .driver-popover-footer,
   .dark .driver-popover.driver-popover-app .driver-popover-footer {
-    background-color: var(--muted);
-    background: color-mix(in oklch, var(--muted) 28%, transparent);
+    background-color: color-mix(in oklch, var(--tour-popover-accent) 45%, transparent);
+    background: color-mix(in oklch, var(--tour-popover-accent) 45%, transparent);
+    border-top-color: var(--tour-popover-border);
+  }
+  html.dark .driver-popover.driver-popover-app .driver-popover-progress-text,
+  body.dark .driver-popover.driver-popover-app .driver-popover-progress-text,
+  .driver-popover.driver-popover-dark .driver-popover-progress-text,
+  .dark .driver-popover.driver-popover-app .driver-popover-progress-text {
+    color: var(--tour-popover-primary);
   }
   html.dark .driver-popover.driver-popover-app .driver-popover-prev-btn,
   html.dark .driver-popover.driver-popover-app .driver-popover-next-btn,
@@ -347,15 +359,16 @@
   .driver-popover.driver-popover-dark .driver-popover-next-btn,
   .dark .driver-popover.driver-popover-app .driver-popover-prev-btn,
   .dark .driver-popover.driver-popover-app .driver-popover-next-btn {
-    background-color: var(--card);
-    background: color-mix(in oklch, var(--primary) 16%, var(--card));
-    border-color: color-mix(in oklch, var(--primary) 42%, var(--border));
+    background-color: white;
+    background: color-mix(in oklch, var(--tour-popover-primary) 8%, white);
+    border-color: color-mix(in oklch, var(--tour-popover-primary) 34%, var(--tour-popover-border));
+    color: var(--tour-popover-primary);
   }
   html.dark .driver-popover.driver-popover-app .driver-popover-arrow,
   body.dark .driver-popover.driver-popover-app .driver-popover-arrow,
   .driver-popover.driver-popover-dark .driver-popover-arrow,
   .dark .driver-popover.driver-popover-app .driver-popover-arrow {
-    border-color: color-mix(in oklch, var(--popover) 94%, black);
+    border-color: var(--tour-popover-bg);
   }
   html {
     @apply font-sans;

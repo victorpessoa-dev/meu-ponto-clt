@@ -232,8 +232,8 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3.5 rounded-2xl border border-border/80 bg-card/90 p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]" data-tour-id="relatorio-filters">
-        <CalendarCarousel
+      <div className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-card/90 p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:gap-3.5 sm:p-4" data-tour-id="relatorio-filters">
+        <SwipeCalendarCarousel
           ariaLabel="Selecionar mês do relatório"
           getValue={(offset) => (cursor.month + offset + 12) % 12}
           renderLabel={(month) => monthName(month)}
@@ -241,7 +241,7 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
           onShift={(delta) => setCursor((current) => ({ ...current, month: (current.month + delta + 12) % 12 }))}
           className="capitalize"
         />
-        <CalendarCarousel
+        <SwipeCalendarCarousel
           ariaLabel="Selecionar ano do relatório"
           getValue={(offset) => cursor.year + offset}
           renderLabel={(year) => year}
@@ -478,16 +478,45 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
 /**
  * Controle compacto para navegar entre meses ou anos mantendo o item atual em destaque.
  */
-function CalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onShift, className }) {
+function SwipeCalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onShift, className }) {
   const slots = [-2, -1, 0, 1, 2]
+  const dragRef = useRef({ startX: 0, startY: 0, pointerId: null })
+  const suppressClickRef = useRef(false)
+
+  function handlePointerDown(event) {
+    dragRef.current = { startX: event.clientX, startY: event.clientY, pointerId: event.pointerId }
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }
+
+  function handlePointerUp(event) {
+    if (dragRef.current.pointerId !== event.pointerId) return
+
+    const deltaX = event.clientX - dragRef.current.startX
+    const deltaY = event.clientY - dragRef.current.startY
+    dragRef.current = { startX: 0, startY: 0, pointerId: null }
+
+    if (Math.abs(deltaX) < 34 || Math.abs(deltaX) < Math.abs(deltaY) * 1.3) return
+
+    suppressClickRef.current = true
+    onShift(deltaX > 0 ? -1 : 1)
+    window.setTimeout(() => {
+      suppressClickRef.current = false
+    }, 0)
+  }
 
   return (
-    <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2.5">
-      <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => onShift(-1)} aria-label={`${ariaLabel} anterior`}>
-        <ChevronLeft className="h-5 w-5" />
-      </Button>
-      <div className="relative h-16 min-w-0 overflow-hidden rounded-2xl bg-transparent ring-1 ring-border/70" role="tablist" aria-label={ariaLabel}>
-        <div className="absolute inset-x-0 top-1/2 h-11 -translate-y-1/2">
+    <div className="relative">
+      <div
+        className="relative h-14 min-w-0 cursor-grab touch-pan-y overflow-hidden rounded-2xl bg-background/20 ring-1 ring-border/60 active:cursor-grabbing sm:h-16"
+        role="tablist"
+        aria-label={ariaLabel}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={() => {
+          dragRef.current = { startX: 0, startY: 0, pointerId: null }
+        }}
+      >
+        <div className="absolute inset-x-0 top-1/2 h-10 -translate-y-1/2 sm:h-11">
           {slots.map((slot) => {
             const itemValue = getValue(slot)
             const active = slot === 0
@@ -497,15 +526,18 @@ function CalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onShift,
                 type="button"
                 role="tab"
                 aria-selected={active}
-                onClick={() => onChange(itemValue)}
+                onClick={() => {
+                  if (suppressClickRef.current) return
+                  onChange(itemValue)
+                }}
                 className={cn(
-                  "absolute top-0 h-11 rounded-xl border px-3 text-sm font-semibold transition-all duration-300 ease-out will-change-transform",
+                  "absolute top-0 h-10 rounded-xl border px-2 text-xs font-semibold transition-all duration-300 ease-out will-change-transform sm:h-11 sm:px-3 sm:text-sm",
                   "focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
-                  active && "left-[22%] right-[22%] z-20 border-primary bg-primary text-primary-foreground",
-                  slot === -1 && "left-[-5%] right-[73%] z-10 scale-90 border-transparent bg-transparent text-primary opacity-75",
-                  slot === 1 && "left-[73%] right-[-5%] z-10 scale-90 border-transparent bg-transparent text-primary opacity-75",
-                  slot === -2 && "left-[-32%] right-[96%] scale-[0.8] border-transparent bg-transparent text-primary opacity-25",
-                  slot === 2 && "left-[96%] right-[-32%] scale-[0.8] border-transparent bg-transparent text-primary opacity-25",
+                  active && "left-[21%] right-[21%] z-20 border-primary bg-primary text-sm text-primary-foreground sm:left-[24%] sm:right-[24%]",
+                  slot === -1 && "left-[2%] right-[76%] z-10 scale-90 border-transparent bg-transparent text-primary/75 opacity-50 sm:left-[5%] sm:right-[76%] sm:opacity-65",
+                  slot === 1 && "left-[76%] right-[2%] z-10 scale-90 border-transparent bg-transparent text-primary/75 opacity-50 sm:left-[76%] sm:right-[5%] sm:opacity-65",
+                  slot === -2 && "left-[-28%] right-[96%] scale-[0.8] border-transparent bg-transparent text-primary opacity-0 sm:left-[-20%] sm:right-[95%] sm:opacity-20",
+                  slot === 2 && "left-[96%] right-[-28%] scale-[0.8] border-transparent bg-transparent text-primary opacity-0 sm:left-[95%] sm:right-[-20%] sm:opacity-20",
                   className,
                 )}
               >
@@ -515,8 +547,25 @@ function CalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onShift,
           })}
         </div>
       </div>
-      <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => onShift(1)} aria-label={`Próximo ${ariaLabel}`}>
-        <ChevronRight className="h-5 w-5" />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="absolute left-1 top-1/2 z-30 h-8 w-8 -translate-y-1/2 rounded-full border border-border/65 bg-card/80 text-muted-foreground shadow-none backdrop-blur hover:bg-accent/60 hover:text-foreground sm:left-2 sm:h-9 sm:w-9"
+        onClick={() => onShift(-1)}
+        aria-label={`${ariaLabel} anterior`}
+      >
+        <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="absolute right-1 top-1/2 z-30 h-8 w-8 -translate-y-1/2 rounded-full border border-border/65 bg-card/80 text-muted-foreground shadow-none backdrop-blur hover:bg-accent/60 hover:text-foreground sm:right-2 sm:h-9 sm:w-9"
+        onClick={() => onShift(1)}
+        aria-label={`Proximo ${ariaLabel}`}
+      >
+        <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
       </Button>
     </div>
   )
