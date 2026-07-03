@@ -10,6 +10,7 @@ import { useState } from "react"
 import { CalendarDays, Clock, LogOut, Settings } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import { useAuth } from "@/lib/auth/auth-context"
+import { updateUser } from "@/lib/data/store"
 import { cn } from "@/lib/utils/utils"
 import {
   DropdownMenu,
@@ -24,6 +25,7 @@ import { PunchView } from "@/components/ponto/punch-view"
 import { ReportView } from "@/components/reports/report-view"
 import { SettingsView } from "@/components/settings/settings-view"
 import { UserAvatar } from "@/components/settings/avatar-picker"
+import { OnboardingProvider } from "@/components/onboarding/onboarding"
 
 const TAB_THEMES = {
   ponto: {
@@ -53,6 +55,7 @@ export function AppShell() {
   const { user, logout } = useAuth()
   const [tab, setTab] = useState("ponto")
   const [reportCursor, setReportCursor] = useState(null)
+  const [settingsSection, setSettingsSection] = useState("perfil")
 
   if (!user) return null
   const theme = TAB_THEMES[tab] || TAB_THEMES.ponto
@@ -60,14 +63,24 @@ export function AppShell() {
   const navItems = [
     { key: "ponto", label: "Ponto", icon: Clock, show: true },
     { key: "relatorio", label: "Relatório", icon: CalendarDays, show: true },
-    { key: "config", label: "Ajustes", icon: Settings, show: true },
+    { key: "config", label: "Configurações", icon: Settings, show: true },
   ]
 
   return (
+    // Mantem o estado global do onboarding perto da navegacao que o tour precisa controlar.
+    <OnboardingProvider
+      userId={user.id}
+      onboardingState={user.onboardingState}
+      onOnboardingStateChange={(nextState) => updateUser(user.id, { onboardingState: nextState })}
+      activeArea={tab}
+      onSelectArea={setTab}
+      settingsSection={settingsSection}
+      onSelectSettingsSection={setSettingsSection}
+    >
     <div className={cn("flex min-h-dvh flex-col transition-colors duration-300", theme.page)}>
       <header className={cn("sticky top-0 z-20 border-b pt-safe transition-colors duration-300", theme.header)}>
         <div className="mx-auto flex w-full max-w-2xl items-center justify-between px-safe py-3.5">
-          <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex min-w-0 items-center gap-2.5" data-tour-id="app-brand">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-foreground/10 ring-1 ring-primary-foreground/15">
               <Clock className="h-5 w-5" strokeWidth={2.25} />
             </span>
@@ -76,6 +89,7 @@ export function AppShell() {
           <div className="flex min-w-0 items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger
+                data-tour-id="user-menu"
                 className="touch-target flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-foreground/12 text-sm font-semibold ring-1 ring-primary-foreground/20 transition-transform duration-200 hover:scale-105 hover:bg-primary-foreground/18"
                 aria-label="Menu do usuário"
               >
@@ -120,6 +134,8 @@ export function AppShell() {
             )}
             {tab === "config" && (
               <SettingsView
+                value={settingsSection}
+                onValueChange={setSettingsSection}
                 onImportComplete={(summary) => {
                   if (summary?.latestDate) {
                     const [year, month] = summary.latestDate.split("-").map(Number)
@@ -152,6 +168,7 @@ export function AppShell() {
                   )}
                   aria-current={active ? "page" : undefined}
                   aria-label={label}
+                  data-tour-id={`nav-${key}`}
                 >
                   {active && <motion.span layoutId="active-nav-pill" className="absolute inset-x-3 inset-y-1 rounded-xl bg-accent/70" transition={{ duration: 0.2 }} />}
                   <Icon className="relative h-5 w-5 shrink-0 transition-transform duration-300 ease-out group-hover/nav:scale-105" strokeWidth={active ? 2.35 : 2} />
@@ -162,5 +179,6 @@ export function AppShell() {
         </div>
       </nav>
     </div>
+    </OnboardingProvider>
   )
 }
