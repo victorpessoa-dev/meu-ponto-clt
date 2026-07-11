@@ -5,7 +5,7 @@ import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon
 const Toaster = ({ ...props }) => {
     const { resolvedTheme } = useTheme();
     const sonnerTheme = resolvedTheme === "dark" ? "dark" : "light";
-    return (<Sonner theme={sonnerTheme} expand richColors className="toaster group !z-[9999]" icons={{
+    return (<Sonner theme={sonnerTheme} expand richColors swipeDirections={["left", "right"]} className="toaster group !z-[9999]" icons={{
             success: (<CircleCheckIcon className="size-4 text-positive"/>),
             info: (<InfoIcon className="size-4 text-primary"/>),
             warning: (<TriangleAlertIcon className="size-4 text-chart-3"/>),

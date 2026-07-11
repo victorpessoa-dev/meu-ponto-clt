@@ -533,9 +533,9 @@ function SwipeCalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onS
                 className={cn(
                   "absolute top-0 h-10 rounded-xl border px-2 text-xs font-semibold transition-all duration-300 ease-out will-change-transform sm:h-11 sm:px-3 sm:text-sm",
                   "focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
-                  active && "left-[21%] right-[21%] z-20 border-primary bg-primary text-sm text-primary-foreground sm:left-[24%] sm:right-[24%]",
-                  slot === -1 && "left-[2%] right-[76%] z-10 scale-90 border-transparent bg-transparent text-primary/75 opacity-50 sm:left-[5%] sm:right-[76%] sm:opacity-65",
-                  slot === 1 && "left-[76%] right-[2%] z-10 scale-90 border-transparent bg-transparent text-primary/75 opacity-50 sm:left-[76%] sm:right-[5%] sm:opacity-65",
+                  active && "left-[29%] right-[29%] z-10 border-primary bg-primary text-sm text-primary-foreground sm:left-[24%] sm:right-[24%]",
+                  slot === -1 && "left-[12%] right-[72%] z-10 scale-90 border-transparent bg-transparent text-primary/75 opacity-50 sm:left-[5%] sm:right-[76%] sm:opacity-65",
+                  slot === 1 && "left-[72%] right-[12%] z-10 scale-90 border-transparent bg-transparent text-primary/75 opacity-50 sm:left-[76%] sm:right-[5%] sm:opacity-65",
                   slot === -2 && "left-[-28%] right-[96%] scale-[0.8] border-transparent bg-transparent text-primary opacity-0 sm:left-[-20%] sm:right-[95%] sm:opacity-20",
                   slot === 2 && "left-[96%] right-[-28%] scale-[0.8] border-transparent bg-transparent text-primary opacity-0 sm:left-[95%] sm:right-[-20%] sm:opacity-20",
                   className,
@@ -551,7 +551,7 @@ function SwipeCalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onS
         type="button"
         variant="ghost"
         size="icon"
-        className="absolute left-1 top-1/2 z-30 h-8 w-8 -translate-y-1/2 rounded-full border border-border/65 bg-card/80 text-muted-foreground shadow-none backdrop-blur hover:bg-accent/60 hover:text-foreground sm:left-2 sm:h-9 sm:w-9"
+        className="absolute left-1 top-1/2 z-10 h-9 w-9 -translate-y-1/2 rounded-full border border-border/65 bg-card/90 text-muted-foreground shadow-none backdrop-blur hover:bg-accent/60 hover:text-foreground sm:left-2"
         onClick={() => onShift(-1)}
         aria-label={`${ariaLabel} anterior`}
       >
@@ -561,7 +561,7 @@ function SwipeCalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onS
         type="button"
         variant="ghost"
         size="icon"
-        className="absolute right-1 top-1/2 z-30 h-8 w-8 -translate-y-1/2 rounded-full border border-border/65 bg-card/80 text-muted-foreground shadow-none backdrop-blur hover:bg-accent/60 hover:text-foreground sm:right-2 sm:h-9 sm:w-9"
+        className="absolute right-1 top-1/2 z-10 h-9 w-9 -translate-y-1/2 rounded-full border border-border/65 bg-card/90 text-muted-foreground shadow-none backdrop-blur hover:bg-accent/60 hover:text-foreground sm:right-2"
         onClick={() => onShift(1)}
         aria-label={`Proximo ${ariaLabel}`}
       >
