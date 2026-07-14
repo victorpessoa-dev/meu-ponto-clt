@@ -1,10 +1,10 @@
 import * as React from "react";
 import { cn } from "@/lib/utils/utils";
 function Card({ className, size = "default", ...props }) {
-    return (<div data-slot="card" data-size={size} className={cn("group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-2xl bg-card/95 py-(--card-spacing) text-sm text-card-foreground shadow-[0_1px_2px_rgba(15,23,42,0.04),0_14px_36px_rgba(15,23,42,0.05)] ring-1 ring-border/80 backdrop-blur [--card-spacing:--spacing(5)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-2xl *:[img:last-child]:rounded-b-2xl dark:shadow-none", className)} {...props}/>);
+    return (<div data-slot="card" data-size={size} className={cn("group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-xl border border-border/80 bg-card py-(--card-spacing) text-sm text-card-foreground shadow-[0_1px_2px_rgba(15,23,42,0.035)] [--card-spacing:--spacing(5)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl dark:shadow-none", className)} {...props}/>);
 }
 function CardHeader({ className, ...props }) {
-    return (<div data-slot="card-header" className={cn("group/card-header @container/card-header grid auto-rows-min items-start gap-1.5 rounded-t-2xl px-(--card-spacing) has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-(--card-spacing)", className)} {...props}/>);
+    return (<div data-slot="card-header" className={cn("group/card-header @container/card-header grid auto-rows-min items-start gap-1.5 rounded-t-xl px-(--card-spacing) has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-(--card-spacing)", className)} {...props}/>);
 }
 function CardTitle({ className, ...props }) {
     return (<div data-slot="card-title" className={cn("font-heading text-base leading-snug font-semibold tracking-tight group-data-[size=sm]/card:text-sm", className)} {...props}/>);
