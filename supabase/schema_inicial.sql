@@ -1,5 +1,6 @@
 -- Meu Ponto CLT - schema completo para uma instalacao nova do Supabase.
 -- Execute este arquivo uma unica vez no SQL Editor de um projeto vazio.
+-- Este modelo nao possui perfil, coluna, funcao ou politica de administrador.
 
 BEGIN;
 
@@ -159,6 +160,12 @@ ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.time_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.justifications ENABLE ROW LEVEL SECURITY;
 
+-- O papel autenticado recebe acesso SQL; as politicas abaixo limitam cada
+-- operacao exclusivamente aos dados do proprio usuario.
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.users TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.time_records TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.justifications TO authenticated;
+
 CREATE POLICY "authenticated_select_users" ON public.users FOR SELECT
   TO authenticated USING (auth.uid() = id);
 CREATE POLICY "authenticated_insert_users" ON public.users FOR INSERT
@@ -191,5 +198,8 @@ CREATE POLICY "authenticated_delete_justifications" ON public.justifications FOR
 
 REVOKE ALL ON FUNCTION public.is_active_user() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_active_user() TO authenticated;
+
+-- Garante que a API reconheca imediatamente tabelas, funcoes e politicas.
+NOTIFY pgrst, 'reload schema';
 
 COMMIT;

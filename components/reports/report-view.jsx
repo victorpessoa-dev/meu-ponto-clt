@@ -561,7 +561,8 @@ function SwipeCalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onS
         type="button"
         variant="ghost"
         size="icon"
-        className="absolute left-1 top-1/2 z-10 h-9 w-9 -translate-y-1/2 rounded-full border border-border/65 bg-card/90 text-muted-foreground shadow-none backdrop-blur hover:bg-accent/60 hover:text-foreground sm:left-2"
+        className="absolute left-1 top-1/2 z-10 h-9 w-9 rounded-full border border-border/65 bg-card/90 text-muted-foreground shadow-none backdrop-blur hover:bg-accent/60 hover:text-foreground sm:left-2"
+        style={{ transform: "translateY(-50%)" }}
         onClick={() => onShift(-1)}
         aria-label={`${ariaLabel} anterior`}
       >
@@ -571,7 +572,8 @@ function SwipeCalendarCarousel({ ariaLabel, getValue, renderLabel, onChange, onS
         type="button"
         variant="ghost"
         size="icon"
-        className="absolute right-1 top-1/2 z-10 h-9 w-9 -translate-y-1/2 rounded-full border border-border/65 bg-card/90 text-muted-foreground shadow-none backdrop-blur hover:bg-accent/60 hover:text-foreground sm:right-2"
+        className="absolute right-1 top-1/2 z-10 h-9 w-9 rounded-full border border-border/65 bg-card/90 text-muted-foreground shadow-none backdrop-blur hover:bg-accent/60 hover:text-foreground sm:right-2"
+        style={{ transform: "translateY(-50%)" }}
         onClick={() => onShift(1)}
         aria-label={`Proximo ${ariaLabel}`}
       >
