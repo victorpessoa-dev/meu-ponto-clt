@@ -3,11 +3,11 @@
 /**
  * Shell autenticado da aplicacao.
  *
- * Orquestra navegacao principal, menu do usuario e transicao entre ponto,
- * relatorio e ajustes sem recarregar a sessao.
+ * Mantem a navegacao compacta no mobile e oferece uma area de trabalho
+ * persistente, no estilo desktop, em telas maiores.
  */
 import { useState } from "react"
-import { CalendarDays, Clock, LogOut, Settings } from "lucide-react"
+import { CalendarDays, ChevronDown, Clock3, LogOut, Settings } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import { useAuth } from "@/lib/auth/auth-context"
 import { updateUser } from "@/lib/data/store"
@@ -27,30 +27,18 @@ import { SettingsView } from "@/components/settings/settings-view"
 import { UserAvatar } from "@/components/settings/avatar-picker"
 import { OnboardingProvider } from "@/components/onboarding/onboarding"
 
-const TAB_THEMES = {
-  ponto: {
-    page: "bg-background",
-    header: "border-primary/20 bg-primary text-primary-foreground",
-    nav: "border-border/80 bg-card/92 backdrop-blur",
-    active: "text-primary",
-  },
-  relatorio: {
-    page: "bg-background",
-    header: "border-primary/20 bg-primary text-primary-foreground",
-    nav: "border-border/80 bg-card/92 backdrop-blur",
-    active: "text-primary",
-  },
-  config: {
-    page: "bg-background",
-    header: "border-primary/20 bg-primary text-primary-foreground",
-    nav: "border-border/80 bg-card/92 backdrop-blur",
-    active: "text-primary",
-  },
+const NAV_ITEMS = [
+  { key: "ponto", label: "Ponto", description: "Registro diário", icon: Clock3 },
+  { key: "relatorio", label: "Relatório", description: "Espelho e banco de horas", icon: CalendarDays },
+  { key: "config", label: "Configurações", description: "Preferências e dados", icon: Settings },
+]
+
+const PAGE_META = {
+  ponto: { eyebrow: "Operação", title: "Registro de ponto", description: "Acompanhe sua jornada e registre os horários do dia." },
+  relatorio: { eyebrow: "Monitoramento", title: "Relatório mensal", description: "Consulte registros, saldos e ocorrências do período." },
+  config: { eyebrow: "Gerenciamento", title: "Configurações", description: "Gerencie seu perfil, jornada e dados da conta." },
 }
 
-/**
- * Componente raiz exibido apos autenticacao.
- */
 export function AppShell() {
   const { user, logout } = useAuth()
   const [tab, setTab] = useState("ponto")
@@ -58,16 +46,44 @@ export function AppShell() {
   const [settingsSection, setSettingsSection] = useState("perfil")
 
   if (!user) return null
-  const theme = TAB_THEMES[tab] || TAB_THEMES.ponto
+  const page = PAGE_META[tab] || PAGE_META.ponto
 
-  const navItems = [
-    { key: "ponto", label: "Ponto", icon: Clock, show: true },
-    { key: "relatorio", label: "Relatório", icon: CalendarDays, show: true },
-    { key: "config", label: "Configurações", icon: Settings, show: true },
-  ]
+  const userMenu = (compact = false) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        data-tour-id="user-menu"
+        className={cn(
+          "group flex items-center rounded-xl text-left outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring/30",
+          compact ? "size-10 justify-center" : "w-full gap-2.5 p-2",
+        )}
+        aria-label="Menu do usuário"
+      >
+        <UserAvatar avatarIcon={user.avatarIcon} name={user.name} className="size-8 shrink-0" />
+        {!compact && (
+          <>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold text-sidebar-foreground">{user.name}</span>
+              <span className="block truncate text-xs text-muted-foreground">{user.jobTitle || user.email}</span>
+            </span>
+            <ChevronDown className="size-3.5 text-muted-foreground transition-transform group-data-[popup-open]:rotate-180" />
+          </>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align={compact ? "end" : "start"} side={compact ? "bottom" : "right"} className="w-60">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="flex flex-col gap-0.5 px-2 py-2">
+            <span className="truncate text-sm text-foreground">{user.name}</span>
+            <span className="truncate font-normal">{[user.jobTitle, user.companyName].filter(Boolean).join(" • ") || user.email}</span>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => setTab("config")}><Settings />Meu perfil</DropdownMenuItem>
+        <DropdownMenuItem onClick={logout} variant="destructive"><LogOut />Sair</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 
   return (
-    // Mantem o estado global do onboarding perto da navegacao que o tour precisa controlar.
     <OnboardingProvider
       userId={user.id}
       onboardingState={user.onboardingState}
@@ -77,108 +93,91 @@ export function AppShell() {
       settingsSection={settingsSection}
       onSelectSettingsSection={setSettingsSection}
     >
-    <div className={cn("flex min-h-dvh flex-col transition-colors duration-300", theme.page)}>
-      <header className={cn("sticky top-0 z-20 border-b pt-safe transition-colors duration-300", theme.header)}>
-        <div className="mx-auto flex w-full max-w-2xl items-center justify-between px-safe py-3.5">
-          <div className="flex min-w-0 items-center gap-2.5" data-tour-id="app-brand">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-foreground/10 ring-1 ring-primary-foreground/15">
-              <Clock className="h-5 w-5" strokeWidth={2.25} />
-            </span>
-            <span className="truncate text-base font-bold tracking-tight">Meu Ponto CLT</span>
+      <div className="min-h-dvh bg-background lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]">
+        <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-sidebar-border bg-sidebar lg:flex">
+          <div className="flex h-16 items-center gap-2.5 border-b border-sidebar-border px-4" data-tour-id="app-brand">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm"><Clock3 className="size-4.5" strokeWidth={2.3} /></span>
+            <span className="text-sm font-bold tracking-tight text-sidebar-foreground">Meu Ponto CLT</span>
           </div>
-          <div className="flex min-w-0 items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                data-tour-id="user-menu"
-                className="touch-target flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-foreground/12 text-sm font-semibold ring-1 ring-primary-foreground/20 transition-transform duration-200 hover:scale-105 hover:bg-primary-foreground/18"
-                aria-label="Menu do usuário"
-              >
-                <UserAvatar avatarIcon={user.avatarIcon} name={user.name} className="h-8 w-8 bg-primary-foreground/15 text-primary-foreground" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel className="flex flex-col">
-                    <span className="truncate">{user.name}</span>
-                    <span className="truncate text-xs font-normal text-muted-foreground">
-                      {[user.jobTitle, user.companyName].filter(Boolean).join(" • ") || user.email}
-                    </span>
-                  </DropdownMenuLabel>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setTab("config")}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Meu perfil
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sair
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </header>
 
-      <main className="mx-auto w-full max-w-2xl flex-1 px-safe pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-4 sm:pt-6">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={tab}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-          >
-            {tab === "ponto" && <PunchView />}
-            {tab === "relatorio" && (
-              <ReportView cursorOverride={reportCursor} onCursorOverrideApplied={() => setReportCursor(null)} />
-            )}
-            {tab === "config" && (
-              <SettingsView
-                value={settingsSection}
-                onValueChange={setSettingsSection}
-                onImportComplete={(summary) => {
-                  if (summary?.latestDate) {
-                    const [year, month] = summary.latestDate.split("-").map(Number)
-                    setReportCursor({ year, month: month - 1 })
-                  }
-                  setTab("relatorio")
-                }}
-              />
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </main>
-
-      <nav className={cn("fixed inset-x-0 bottom-0 z-20 border-t pb-safe shadow-[0_-10px_30px_rgba(15,23,42,0.08)] transition-colors duration-300 dark:shadow-none", theme.nav)}>
-        <div
-          className="mx-auto grid w-full max-w-2xl px-safe"
-          style={{ gridTemplateColumns: `repeat(${navItems.filter((n) => n.show).length}, 1fr)` }}
-        >
-          {navItems
-            .filter((n) => n.show)
-            .map(({ key, label, icon: Icon }) => {
+          <nav className="flex-1 space-y-1 p-3" aria-label="Navegação principal">
+            <p className="px-2 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Workspace</p>
+            {NAV_ITEMS.map(({ key, label, description, icon: Icon }) => {
               const active = tab === key
               return (
                 <button
                   key={key}
                   onClick={() => setTab(key)}
                   className={cn(
-                    "group/nav touch-target relative flex flex-col items-center justify-center gap-0.5 rounded-xl py-2 text-[11px] font-semibold transition-all duration-200 ease-out hover:bg-accent/60 hover:text-foreground sm:text-xs",
-                    active ? theme.active : "text-muted-foreground",
+                    "group relative flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-sidebar-ring/30",
+                    active ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-muted-foreground hover:bg-sidebar-accent/65 hover:text-sidebar-foreground",
                   )}
                   aria-current={active ? "page" : undefined}
-                  aria-label={label}
                   data-tour-id={`nav-${key}`}
                 >
-                  {active && <motion.span layoutId="active-nav-pill" className="absolute inset-x-3 inset-y-1 rounded-xl bg-accent/70" transition={{ duration: 0.2 }} />}
-                  <Icon className="relative h-5 w-5 shrink-0 transition-transform duration-300 ease-out group-hover/nav:scale-105" strokeWidth={active ? 2.35 : 2} />
-                  <span className="relative truncate">{label}</span>
+                  {active && <motion.span layoutId="desktop-active" className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-sidebar-primary" />}
+                  <Icon className={cn("size-4.5 shrink-0", active && "text-sidebar-primary")} strokeWidth={active ? 2.25 : 1.9} />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold">{label}</span>
+                    <span className="block truncate text-[11px] text-muted-foreground">{description}</span>
+                  </span>
                 </button>
               )
             })}
+          </nav>
+          <div className="border-t border-sidebar-border p-3">{userMenu()}</div>
+        </aside>
+
+        <div className="min-w-0 lg:col-start-2">
+          <header className="sticky top-0 z-20 border-b border-border/75 bg-background/88 pt-safe backdrop-blur-xl">
+            <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-safe lg:h-16 lg:px-8">
+              <div className="flex min-w-0 items-center gap-2 lg:hidden" data-tour-id="app-brand">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Clock3 className="size-4.5" /></span>
+                <span className="truncate text-sm font-bold tracking-tight">Meu Ponto CLT</span>
+              </div>
+              <div className="hidden min-w-0 lg:block">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-primary">{page.eyebrow}</p>
+                <h1 className="truncate text-base font-semibold tracking-tight">{page.title}</h1>
+              </div>
+              <div className="lg:hidden">{userMenu(true)}</div>
+              <p className="hidden max-w-md truncate text-sm text-muted-foreground xl:block">{page.description}</p>
+            </div>
+          </header>
+
+          <main className="mx-auto w-full max-w-7xl px-safe pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] pt-4 sm:pt-6 lg:px-8 lg:pb-10 lg:pt-8">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div className={cn(tab === "ponto" && "mx-auto max-w-4xl", tab === "config" && "mx-auto max-w-5xl")} key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.16, ease: "easeOut" }}>
+                {tab === "ponto" && <PunchView />}
+                {tab === "relatorio" && <ReportView cursorOverride={reportCursor} onCursorOverrideApplied={() => setReportCursor(null)} />}
+                {tab === "config" && (
+                  <SettingsView value={settingsSection} onValueChange={setSettingsSection} onImportComplete={(summary) => {
+                    if (summary?.latestDate) {
+                      const [year, month] = summary.latestDate.split("-").map(Number)
+                      setReportCursor({ year, month: month - 1 })
+                    }
+                    setTab("relatorio")
+                  }} />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </main>
         </div>
-      </nav>
-    </div>
+
+        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-card/92 pb-safe shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur-xl lg:hidden" aria-label="Navegação principal">
+          <div className="mx-auto grid max-w-lg grid-cols-3 px-safe py-1">
+            {NAV_ITEMS.map(({ key, label, icon: Icon }) => {
+              const active = tab === key
+              return (
+                <button key={key} onClick={() => setTab(key)} className={cn("relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-semibold transition-colors", active ? "text-primary" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground")} aria-current={active ? "page" : undefined} data-tour-id={`nav-${key}`}>
+                  {active && <motion.span layoutId="mobile-active" className="absolute inset-x-2 inset-y-1 rounded-lg bg-accent/75" />}
+                  <Icon className="relative size-4.5" strokeWidth={active ? 2.3 : 1.9} />
+                  <span className="relative">{label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </nav>
+      </div>
     </OnboardingProvider>
   )
 }
