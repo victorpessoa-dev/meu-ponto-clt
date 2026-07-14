@@ -168,6 +168,11 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
    * Preenche o modal com os horarios existentes do dia selecionado.
    */
   function openEdit(day) {
+    if (day.iso > todayISO()) {
+      toast.info("Não é permitido editar a planilha de uma data futura.")
+      return
+    }
+
     setEditDate(day.iso)
     setEditValues({
       entry: day.rec?.entry ?? "",
@@ -364,17 +369,22 @@ export function ReportView({ cursorOverride, onCursorOverrideApplied }) {
                 {dayMetrics.map((day) => {
                   const { iso, rec, just, hasPunch, bankable, balance, weekend, expected } = day
                   const onlyStatus = !hasPunch && (just || expected === 0)
+                  const isFuture = iso > todayISO()
                   return (
                     <div
                       key={iso}
-                      role="button"
-                      tabIndex={showSheet ? 0 : -1}
+                      role={isFuture ? undefined : "button"}
+                      tabIndex={showSheet && !isFuture ? 0 : -1}
                       onClick={() => openEdit(day)}
                       onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") openEdit(day)
+                        if (!isFuture && (event.key === "Enter" || event.key === " ")) openEdit(day)
                       }}
+                      aria-disabled={isFuture || undefined}
                       className={cn(
-                        "grid cursor-pointer grid-cols-[2.75rem_repeat(5,minmax(3.25rem,1fr))] items-center text-sm transition-all duration-200 ease-out hover:bg-primary/5 hover:shadow-sm focus-visible:bg-primary/5 focus-visible:outline-none sm:grid-cols-[3rem_repeat(5,minmax(3.5rem,1fr))]",
+                        "grid grid-cols-[2.75rem_repeat(5,minmax(3.25rem,1fr))] items-center text-sm transition-all duration-200 ease-out sm:grid-cols-[3rem_repeat(5,minmax(3.5rem,1fr))]",
+                        isFuture
+                          ? "cursor-not-allowed opacity-50"
+                          : "cursor-pointer hover:bg-primary/5 hover:shadow-sm focus-visible:bg-primary/5 focus-visible:outline-none",
                         weekend && "bg-muted/40",
                         rowToneClass({ expected, just }),
                         iso === editDate && "ring-2 ring-primary/40",
